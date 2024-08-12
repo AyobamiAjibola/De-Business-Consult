@@ -1,0 +1,98 @@
+# logs
+# *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+pids
+*.pid
+*.seed
+*.pid.lock
+lib-cov
+coverage
+*.lcov
+.lock-wscript
+# build/Release
+server/logs/
+server/node_modules/
+jspm_packages/
+web_modules/
+*.tsbuildinfo
+.npm
+.eslintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.node_repl_history
+*.tgz
+.yarn-integrity
+server/.env
+.env.test
+.cache
+.parcel-cache
+.next
+out
+dist
+.cache/
+.serverless/
+.fusebox/
+.dynamodb/
+.tern-port
+.vscode-test
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+uploads
+# Dockerfile*
+# docker*
+fe-docker-bk-up
+default*.conf*
+storage
+*.txt
+keys
+.vscode
+.idea
+.env*
+staging_server/build
+server/build
+*.rdb
+.DS_Store
+# yarn.lock
+*.sh
+docs
+*sdk*
+**.p8*
+admin
+client
+server/.env
+staging_server/.env
+
+
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+
+# testing
+/coverage
+
+# next.js
+client/.next/
+client/out/
+client/node_modules
+
+# production
+client/build
+
+# misc
+*.pem
+
+
+# vercel
+client/.vercel
+
+# typescript
+client/*.tsbuildinfo
+client/next-env.d.ts

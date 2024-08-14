@@ -19,6 +19,7 @@ server/node_modules/
 jspm_packages/
 web_modules/
 *.tsbuildinfo
+*.yaml
 .npm
 .eslintcache
 .rpt2_cache/
@@ -47,8 +48,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 uploads
-# Dockerfile*
-# docker*
 fe-docker-bk-up
 default*.conf*
 storage
@@ -69,7 +68,6 @@ docs
 admin
 client
 server/.env
-staging_server/.env
 
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.

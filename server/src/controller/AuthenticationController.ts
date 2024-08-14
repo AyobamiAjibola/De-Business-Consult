@@ -8,7 +8,6 @@ import CustomAPIError from "../exceptions/CustomAPIError";
 import HttpStatus from "../helpers/HttpStatus";
 import datasources from '../services/dao';
 import settings from "../config/settings";
-import RedisService from "../services/RedisService";
 import SendMailService from "../services/SendMailService";
 import { verify } from 'jsonwebtoken';
 import UserToken from "../models/UserToken";
@@ -19,7 +18,6 @@ import signup_template from "../resources/template/email/signup";
 import moment = require("moment");
 import { IClientModel } from "../models/Client";
 
-const redisService = new RedisService();
 const sendMailService = new SendMailService();
 
 interface TokenTypes {

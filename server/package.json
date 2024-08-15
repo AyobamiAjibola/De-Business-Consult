@@ -8,7 +8,8 @@
     "test": "jest --watchAll",
     "pretest": "cross-env NODE_ENV=test PORT=5001",
     "build": "tsc -b",
-    "compose": "docker compose up --build"
+    "compose": "docker compose up --build",
+    "start": "node build/index.js"
   },
   "keywords": [],
   "author": {

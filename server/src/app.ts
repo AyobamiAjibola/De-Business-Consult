@@ -7,7 +7,6 @@ import cookieParser from "cookie-parser";
 import settings from "./config/settings";
 import globalExceptionHandler from "./middleware/globalExceptionHandler";
 import router from "./routes";
-const credential = require("./helpers/serviceAccount.json");
 
 const app = express();
 export const corsOptions = {

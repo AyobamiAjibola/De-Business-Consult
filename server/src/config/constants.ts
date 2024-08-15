@@ -13,6 +13,7 @@ import QueueEvents = appCommonTypes.QueueEvents;
       500: 'Something Went Wrong. Please Contact Support.',
       409: 'Conflict. Data already available exist.'
     },
+    file_type_error: 'Invalid file format.',
     image_size_error: 'Image size exceeds the allowed limit',
     image_type_error: 'Invalid image format. Only JPEG, PNG, and JPG images are allowed',
     media_type_error: 'Invalid format. Only JPEG, PNG, and JPG images and MP4, MKV, FLV, WEBM formats are allowed',

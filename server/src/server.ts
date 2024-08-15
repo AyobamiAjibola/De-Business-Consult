@@ -9,18 +9,10 @@ const port = process.env.PORT || 5050;
 
 const server = http.createServer(app);
 
-async function startRabbitMqService() {
-  try {
-    server.listen(port, () => logger.info(`Server running on port: ${port}`));
-  } catch (error) {
-    console.error('Error setting up RabbitMQ and Socket.IO:', error);
-  }
-}
-
 async function startServer() {
   try {
     await startup();
-    await startRabbitMqService();
+    server.listen(port, () => logger.info(`Server running on port: ${port}`));
   } catch (error) {
     console.error('Error starting the server:', error);
   }

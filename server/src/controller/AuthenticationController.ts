@@ -136,7 +136,7 @@ export default class AuthenticationController {
             dob: Joi.date().optional().allow(null).label('Date of birth')
         }).validate(req.body);
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
-
+        
         const [client, signUpLink] = await Promise.all([
             datasources.clientDAOService.findByAny({ email: value.email }),
             datasources.signUpAtemptDAOService.findByAny({ email: value.email })
@@ -176,13 +176,13 @@ export default class AuthenticationController {
             bcc: [<string>process.env.SMTP_BCC]
         })
 
-        const response: HttpResponse<any> = {
+        const re: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: `A signup link has been sent to your email.`,
             result: link
         };
 
-        return Promise.resolve(response);
+        return Promise.resolve(re);
     };
 
     @TryCatch

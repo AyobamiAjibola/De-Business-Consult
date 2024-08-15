@@ -1,21 +1,17 @@
 import { appCommonTypes } from "../@types/app-common";
 import HttpResponse = appCommonTypes.HttpResponse;
-import BcryptPasswordEncoder = appCommonTypes.BcryptPasswordEncoder;
 import { Request } from "express";
 import { TryCatch } from "../decorators";
 import Joi from "joi";
 import CustomAPIError from "../exceptions/CustomAPIError";
 import HttpStatus from "../helpers/HttpStatus";
 import datasources from '../services/dao';
-import settings from "../config/settings";
 import { IServicesModel } from "../models/Services";
-import { UserType } from "../models/User";
 
 export default class AdminController {
 
     @TryCatch
     public async createService(req: Request) {
-        const adminUserId = req.user._id;
 
         const { error, value } = Joi.object<IServicesModel>({
             name: Joi.string().required().label('Service name'),
@@ -24,13 +20,9 @@ export default class AdminController {
         }).validate(req.body);
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
-        const [admin, service] = await Promise.all([
-            datasources.userDAOService.findById(adminUserId),
+        const [service] = await Promise.all([
             datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() })
         ]);
-
-        if(admin && !admin.userType.includes(UserType.SuperAdmin))
-            return Promise.reject(CustomAPIError.response('You are not authorized.', HttpStatus.UNAUTHORIZED.code));
 
         if(service)
             return Promise.reject(CustomAPIError.response('Service name already exist.', HttpStatus.NOT_FOUND.code));
@@ -43,8 +35,8 @@ export default class AdminController {
         await datasources.servicesDAOService.create(payload as IServicesModel);
 
         const response: HttpResponse<any> = {
-            code: HttpStatus.OK.code,
-            message: `Successful.`
+            code: HttpStatus.CREATED.code,
+            message: `Successfully created.`
         };
 
         return Promise.resolve(response);
@@ -53,7 +45,6 @@ export default class AdminController {
 
     @TryCatch
     public async updateService(req: Request) {
-        const adminUserId = req.user._id;
         const serviceId = req.params.serviceId;
 
         const { error, value } = Joi.object<IServicesModel>({
@@ -63,18 +54,14 @@ export default class AdminController {
         }).validate(req.body);
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
-        const [admin, service] = await Promise.all([
-            datasources.userDAOService.findById(adminUserId),
+        const [service] = await Promise.all([
             datasources.servicesDAOService.findById(serviceId)
         ]);
-
-        if(admin && !admin.userType.includes(UserType.SuperAdmin))
-            return Promise.reject(CustomAPIError.response('You are not authorized.', HttpStatus.UNAUTHORIZED.code));
-
+        
         if(!service)
             return Promise.reject(CustomAPIError.response('Service name already exist.', HttpStatus.NOT_FOUND.code));
 
-        if (value.name && value.name !== service.name) {
+        if (value.name.toLowerCase() && value.name.toLowerCase() !== service.name) {
             const existingService = await datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() });
             if (existingService) {
                 return Promise.reject(CustomAPIError.response("A service with this name already exists.", HttpStatus.CONFLICT.code));
@@ -91,7 +78,7 @@ export default class AdminController {
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
-            message: `Successful.`
+            message: `Successfully updated.`
         };
 
         return Promise.resolve(response);
@@ -100,7 +87,7 @@ export default class AdminController {
 
     @TryCatch
     public async fetchServices(req: Request) {
-        const services: any = datasources.servicesDAOService.findAll({});
+        const services: any = await datasources.servicesDAOService.findAll({});
 
         const response: HttpResponse<IServicesModel> = {
             code: HttpStatus.OK.code,
@@ -115,7 +102,7 @@ export default class AdminController {
     public async getSingleService(req: Request) {
         const serviceId = req.params.serviceId;
 
-        const service = datasources.servicesDAOService.findById(serviceId);
+        const service = await datasources.servicesDAOService.findById(serviceId);
         if(!service)
             return Promise.reject(CustomAPIError.response("Service not found.", HttpStatus.NOT_FOUND.code));
 
@@ -132,11 +119,11 @@ export default class AdminController {
     public async deleteService(req: Request) {
         const serviceId = req.params.serviceId;
 
-        const service: any = datasources.servicesDAOService.findById(serviceId);
+        const service = await datasources.servicesDAOService.findById(serviceId);
         if(!service)
             return Promise.reject(CustomAPIError.response("Service not found.", HttpStatus.NOT_FOUND.code));
 
-        await datasources.servicesDAOService.deleteById(service._id);
+        await datasources.servicesDAOService.deleteByAny({_id: service._id});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,

@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "fs/promises";
 
 import { v4 } from "uuid";
-import moment, { Moment } from "moment";
+import moment from "moment";
 import { sign, verify } from "jsonwebtoken";
 
 import settings from "../config/settings";
@@ -14,7 +14,7 @@ import HttpStatus from '../helpers/HttpStatus';
 import { NextFunction, Request } from 'express';
 import UserToken from '../models/UserToken';
 import * as Jimp from 'jimp';
-import { HASHTAGS } from '../config/constants';
+import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, HASHTAGS, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
 
 interface IGetImagePath {
   basePath: string;
@@ -144,32 +144,63 @@ export default class Generic {
     return crypto.randomBytes(3).toString('hex');
   }
 
-  // public static async qrcodeImagePath(params: IQRCode) {
-  //   const exists = await this.fileExist(params.basePath);
 
-  //   if (!exists) await fs.mkdir(params.basePath);
+  public static async generateRandomNumberString(length: number) {
+    let result = '';
+    while (result.length < length) {
+        const randomByte = crypto.randomBytes(1); // Get a random byte
+        const randomNumber = randomByte[0] % 10;  // Get a random digit between 0-9
+        result += randomNumber.toString();
+    }
+    return result;
+  }
 
-  //   const path = `${params.basePath}/${params.slug}-${params.type}.png`;
-  //   const secret = "12345678";
+  public static async handleImage(image: any, basePath: string): Promise<{ result?: string, error?: string }> {
+    try {
+        if (!image) return { result: '' };
+        const allowedFileTypes = ALLOWED_FILE_TYPES;
+        if (!allowedFileTypes.includes(image.mimetype as string)) {
+            throw new CustomAPIError(MESSAGES.image_type_error, HttpStatus.BAD_REQUEST.code);
+        }
+        const outputPath = await Generic.compressImage(image.filepath, basePath);
+        const imagePath = await Generic.getImagePath({
+            tempPath: outputPath,
+            filename: image.originalFilename as string,
+            basePath,
+        });
+        
+        return { result: imagePath };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
 
-  //   const combinedData = `${path}\n${secret}`;
+  public static async handleFiles(file: any, basePath: string): Promise<{ result?: string, error?: string }> {
+    try {
+        if (!file) return { result: '' };
+        const allowedFileTypes = ALLOWED_FILE_TYPES2;
+        if (!allowedFileTypes.includes(file.mimetype as string)) {
+            throw new CustomAPIError(MESSAGES.file_type_error, HttpStatus.BAD_REQUEST.code);
+        }
 
-  //   qrcode.toFile(
-  //     combinedData,
-  //     params.data,
-  //     {
-  //       color: {
-  //         dark: "#000000",
-  //         light: "#0000",
-  //       },
-  //     },
-  //     function (err) {
-  //       if (err) throw err;
-  //     }
-  //   );
+        const maxSizeInBytes = MAX_SIZE_IN_BYTE_VID;
+        const actualSize = file.size / (1024 * 1024);
 
-  //   return;
-  // }
+        if (actualSize > maxSizeInBytes) {
+          return { error: MESSAGES.vid_size_error };
+        }
+
+        const imagePath = await Generic.getImagePath({
+            tempPath: file.filepath,
+            filename: file.originalFilename as string,
+            basePath,
+        });
+        
+        return { result: imagePath };
+    } catch (error: any) {
+      return { error: error.message };
+    }
+  }
 
   /**
    * @name generateJwt
@@ -237,22 +268,23 @@ export default class Generic {
   //   }
   // }
 
-  public static async compressImage(imagePath: string): Promise<string> {
-    let outputPath = path.join("uploads/photo", "image.webp");
+  public static async compressImage(imagePath: string, basePath?: string): Promise<string> {
 
+    let outputPath = basePath ? path.join(basePath, "image.png") : path.join("uploads/photo", "image.png");
+    
     try {
-      const image = await Jimp.read(imagePath);
+        // const image = await Jimp.read(imagePath);
 
-      // Resize the image
-      image.resize(700, 620);
+        // // Resize the image
+        // image.resize(700, 620);
 
-      // Save the compressed image
-      await image.quality(80).writeAsync(outputPath);
+        // // Save the compressed image
+        // await image.quality(80).writeAsync(outputPath);
 
-      return outputPath;
+        return imagePath;
     } catch (error) {
-      console.error(error);
-      throw error; // Rethrow the error to handle it upstream
+        console.error(error);
+        throw error; // Rethrow the error to handle it upstream
     }
   }
 

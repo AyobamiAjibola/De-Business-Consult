@@ -2,8 +2,8 @@ import { MESSAGES } from '../config/constants';
 
 export default class HttpStatus {
   public static OK = new HttpStatus(MESSAGES.http['200'], 200);
-  public static ACCEPTED = new HttpStatus(MESSAGES.http['201'], 201);
-  public static CREATED = new HttpStatus(MESSAGES.http['202'], 202);
+  public static ACCEPTED = new HttpStatus(MESSAGES.http['202'], 202);
+  public static CREATED = new HttpStatus(MESSAGES.http['201'], 201);
   public static BAD_REQUEST = new HttpStatus(MESSAGES.http['400'], 400);
   public static NOT_FOUND = new HttpStatus(MESSAGES.http['404'], 404);
   public static UNAUTHORIZED = new HttpStatus(MESSAGES.http['401'], 401);

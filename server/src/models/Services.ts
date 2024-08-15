@@ -2,13 +2,13 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 interface IServices {
     name: string;
-    cost: string;
+    cost: number;
     description: string;
 };
 
 const clientSchema = new Schema<IServices>({
     name: { type: String },
-    cost: { type: String },
+    cost: { type: Number },
     description: { type: String }
 }, { timestamps: true });
   

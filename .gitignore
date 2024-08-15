@@ -80,6 +80,7 @@ server/.env
 client/.next/
 client/out/
 client/node_modules
+client
 
 # production
 client/build

@@ -14,7 +14,7 @@ export const createUserHandler = authenticateRouteWrapper(async (req, res) =>  {
 
 export const updateUserStatusHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await authController.updateUserStatus(req);
-
+    
     res.status(response.code).json(response);
 });
 

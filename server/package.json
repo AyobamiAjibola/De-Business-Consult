@@ -2,14 +2,13 @@
   "name": "de-business-consult",
   "version": "1.0.0",
   "description": "accounting",
-  "main": "build/server.js",
+  "main": "dist/server.js",
   "scripts": {
     "start:dev": "nodemon",
     "test": "jest --watchAll",
     "pretest": "cross-env NODE_ENV=test PORT=5001",
     "build": "tsc -b",
-    "compose": "docker compose up --build",
-    "start": "node build/server.js"
+    "start": "node dist/server.js"
   },
   "keywords": [],
   "author": {

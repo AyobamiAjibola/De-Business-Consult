@@ -70,5 +70,23 @@ export const changeResetPasswordHandler = async (req: Request, res: Response) =>
     res.status(response.code).json(response);
 };
 
+export const changePasswordHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.changePassword(req);
+
+    res.status(response.code).json(response);
+});
+
+export const notificationSettingsHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.notificationSettings(req);
+
+    res.status(response.code).json(response);
+});
+
+export const updateProfileHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.updateProfile(req);
+
+    res.status(response.code).json(response);
+});
+
 
 

@@ -16,7 +16,7 @@ export enum ApplicationStatus {
 
 interface IFiles {
     service: mongoose.Types.ObjectId,
-    files: string[],
+    docs: string[],
     additionalInformation: string
 }
 
@@ -32,10 +32,10 @@ interface IApplication {
     reasonForDecline: string
 };
 
-const clientSchema = new Schema<IApplication>({
+const applicationSchema = new Schema<IApplication>({
     services: [{ 
         service: { type: Schema.Types.ObjectId, ref: 'Services' },
-        files: [{ type: String }],
+        docs: [{ type: String }],
         additionalInformation: { type: String }
     }],
     fee: { type: String },
@@ -51,7 +51,7 @@ const clientSchema = new Schema<IApplication>({
     reasonForDecline: { type: String, allowNull: true }
 }, { timestamps: true });
 
-clientSchema.pre(['findOne', 'find'], function (next) {
+applicationSchema.pre(['findOne', 'find'], function (next) {
     this.populate('services.service')
     .populate({
         path: 'client',
@@ -62,6 +62,6 @@ clientSchema.pre(['findOne', 'find'], function (next) {
   
 export interface IApplicationModel extends Document, IApplication {};
   
-const Application: any = mongoose.model<IApplicationModel>('Application', clientSchema as any);
+const Application: any = mongoose.model<IApplicationModel>('Application', applicationSchema as any);
 
 export default Application

@@ -11,7 +11,7 @@ import QueueEvents = appCommonTypes.QueueEvents;
       403: 'You Are Forbidden From Accessing This Resource.',
       404: 'Not Found. Please Contact Support.',
       500: 'Something Went Wrong. Please Contact Support.',
-      409: 'Conflict. Data already available exist.'
+      409: 'Conflict. Data already exist.'
     },
     file_type_error: 'Invalid file format.',
     image_size_error: 'Image size exceeds the allowed limit',

@@ -28,3 +28,18 @@ export const deleteServiceHandler = authenticateRouteWrapper(async (req, res) =>
     const response = await adminController.deleteService(req);
     res.status(response.code).json(response);
 });
+
+export const dashboardDataHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.dashboardData(req);
+    res.status(response.code).json(response);
+});
+
+export const createClientHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createClient(req);
+    res.status(response.code).json(response);
+});
+
+export const toggleClientStatusHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.toggleClientStatus(req);
+    res.status(response.code).json(response);
+});

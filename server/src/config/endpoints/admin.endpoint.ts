@@ -1,10 +1,13 @@
 import { appCommonTypes } from '../../@types/app-common';
 import RouteEndpoint = appCommonTypes.RouteEndpoints;
 import { 
+    createClientHandler,
     createServiceHandler, 
+    dashboardDataHandler, 
     deleteServiceHandler, 
     fetchServicesHandler, 
     getSingleServiceHandler, 
+    toggleClientStatusHandler, 
     updateServiceHandler 
 } from '../../routes/adminRoute';
 
@@ -38,6 +41,24 @@ const adminEndpoints: RouteEndpoint  = [
         method: 'delete',
         path: '/delete-service/:serviceId',
         handler: deleteServiceHandler
+    },
+    {
+        name: 'dashboard data',
+        method: 'get',
+        path: '/dashboard-data',
+        handler: dashboardDataHandler
+    },
+    {
+        name: 'create client',
+        method: 'post',
+        path: '/create-client',
+        handler: createClientHandler
+    },
+    {
+        name: 'toggle client status',
+        method: 'put',
+        path: '/toggle-client-status/:clientId',
+        handler: toggleClientStatusHandler
     },
 ]
 

@@ -28,11 +28,11 @@ export const changeApplicationsStatusHandler = authenticateRouteWrapper(async (r
     res.status(response.code).json(response);
 });
 
-export const downloadApplicationDocsHandler = authenticateRouteWrapper(async (req, res) =>  {
+export const downloadApplicationDocsHandler = async (req: Request, res: Response) =>  {
     const response = await applicationController.downloadApplicationDocs(req, res);
 
-    res.status(response.code).json(response);
-});
+    res.status(200).json(response);
+};
 
 export const createApplicationHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await applicationController.createApplication(req);

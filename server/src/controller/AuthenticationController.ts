@@ -16,7 +16,9 @@ import Generic from "../utils/Generic";
 import { ISignUpAtemptModel } from "../models/SignUpAtempt";
 import signup_template from "../resources/template/email/signup";
 import moment = require("moment");
-import { IClientModel } from "../models/Client";
+import { ClientStatus, IClientModel } from "../models/Client";
+import formidable, { File } from 'formidable';
+import { UPLOAD_BASE_PATH } from "../config/constants";
 
 const sendMailService = new SendMailService();
 
@@ -24,6 +26,9 @@ interface TokenTypes {
     accessToken: string, 
     refreshToken?: string
 }
+
+const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
+form.setMaxListeners(15);
 
 export default class AuthenticationController {
     private readonly passwordEncoder: BcryptPasswordEncoder | undefined;
@@ -89,8 +94,12 @@ export default class AuthenticationController {
             datasources.userDAOService.findById(id)
         ]); 
 
-        if(admin && !admin.userType.includes(UserType.SuperAdmin))
-            return Promise.reject(CustomAPIError.response('You are not authorized.', HttpStatus.UNAUTHORIZED.code));
+        if(!user)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+        if(user && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
         if(!user)
             return Promise.reject(CustomAPIError.response('User not found.', HttpStatus.NOT_FOUND.code));
@@ -137,14 +146,17 @@ export default class AuthenticationController {
         }).validate(req.body);
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
         
-        const [client, signUpLink] = await Promise.all([
+        const [clientEmail, signUpLink, clientCompanyName] = await Promise.all([
             datasources.clientDAOService.findByAny({ email: value.email }),
-            datasources.signUpAtemptDAOService.findByAny({ email: value.email })
+            datasources.signUpAtemptDAOService.findByAny({ email: value.email }),
+            datasources.clientDAOService.findByAny({ companyName: value.companyName.toLowerCase() }),
         ]); 
-        if(client)
+        if(clientEmail)
             return Promise.reject(CustomAPIError.response("A client with this email already exist.", HttpStatus.CONFLICT.code));
         if(signUpLink && signUpLink.status === 'pending' )
             return Promise.reject(CustomAPIError.response(`You have a pending registration with this email: ${value.email}. Please check your email for the sign up link.`, HttpStatus.CONFLICT.code));
+        if(clientCompanyName)
+            return Promise.reject(CustomAPIError.response(`A client with this company name: ${value.companyName} already exist.`, HttpStatus.CONFLICT.code));
 
         const expiredAt = moment().add(2, 'hours').valueOf();
 
@@ -160,21 +172,15 @@ export default class AuthenticationController {
         const mail = signup_template({
             message: `Your sign up link`,
             link
-          });
+        });
 
         await sendMailService.sendMail({
             to: value.email,
             replyTo: process.env.SMTP_EMAIL_FROM,
-            // @ts-ignore
-            'reply-to': process.env.SMTP_EMAIL_FROM,
-            from: {
-              name: 'De Business Consult',
-              address: <string>process.env.SMTP_EMAIL_FROM,
-            },
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
             subject: `De Business Consult.`,
-            html: mail,
-            bcc: [<string>process.env.SMTP_BCC]
-        })
+            html: mail
+        });
 
         const re: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -219,7 +225,7 @@ export default class AuthenticationController {
         const id = req.params.id;
         const { error, value } = Joi.object<any>({
             password: Joi.string()
-                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,20}$/)
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
                 .messages({
                 "string.pattern.base": `Password does not meet requirement.`,
                 })
@@ -310,7 +316,7 @@ export default class AuthenticationController {
     public async logging(req: Request) {
         const { error, value } = Joi.object<any>({
             password: Joi.string()
-                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,20}$/)
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
                 .messages({
                 "string.pattern.base": `Password does not meet requirement.`,
                 })
@@ -324,6 +330,8 @@ export default class AuthenticationController {
             datasources.clientDAOService.findByAny({ email: value.email })
         ]); 
         if(!client) return Promise.reject(CustomAPIError.response("Client with this email does not exist.", HttpStatus.UNAUTHORIZED.code));
+        if(client.status === ClientStatus.Inactive)
+            return Promise.reject(CustomAPIError.response("You are currently deactivated. Please contact support.", HttpStatus.FORBIDDEN.code))
 
         const hash = client.password as string;
         const password = value.password as string;
@@ -356,9 +364,9 @@ export default class AuthenticationController {
     public async adminLogging(req: Request) {
         const { error, value } = Joi.object<any>({
             password: Joi.string()
-                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,20}$/)
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
                 .messages({
-                "string.pattern.base": `Password does not meet requirement.`,
+                    "string.pattern.base": `Password does not meet requirement.`,
                 })
                 .required()
                 .label("Password"),
@@ -424,15 +432,9 @@ export default class AuthenticationController {
         await sendMailService.sendMail({
             to: value.email,
             replyTo: process.env.SMTP_EMAIL_FROM,
-            // @ts-ignore
-            'reply-to': process.env.SMTP_EMAIL_FROM,
-            from: {
-              name: 'De Business Consult',
-              address: <string>process.env.SMTP_EMAIL_FROM,
-            },
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
             subject: `De Business Consult.`,
-            html: mail,
-            bcc: [<string>process.env.SMTP_BCC]
+            html: mail
         });
 
         await datasources.clientDAOService.updateByAny({
@@ -479,10 +481,50 @@ export default class AuthenticationController {
     };
 
     @TryCatch
+    public async changePassword(req: Request) {
+        const clientId = req.user._id;
+        const { error, value } = Joi.object<any>({
+            newPassword: Joi.string()
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
+                .messages({
+                "string.pattern.base": `Password does not meet requirement.`,
+                })
+                .required()
+                .label("New Password"),
+            confirmNewPassword: Joi.ref('newPassword'),
+            currentPassword: Joi.string().required().label("Current password")
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const client = await datasources.clientDAOService.findById(clientId);
+        if(!client)
+            return Promise.reject(CustomAPIError.response("Client does not found.", HttpStatus.NOT_FOUND.code));
+        
+        const hash = client.password as string;
+
+        const isMatch = await this.passwordEncoder?.match(value.currentPassword.trim(), hash ? hash.trim() : '');
+        if(!isMatch) return Promise.reject(CustomAPIError.response(`The current password entered does not match the old password.`, HttpStatus.UNAUTHORIZED.code));
+
+        const password = await this.passwordEncoder?.encode(value.newPassword as string);
+
+        await datasources.clientDAOService.updateByAny({_id: client._id}, {
+            password
+        });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `You have successfully changed your password.`
+        };
+
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     public async changeResetPassword(req: Request) {
         const { error, value } = Joi.object<any>({
             password: Joi.string()
-                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,20}$/)
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
                 .messages({
                 "string.pattern.base": `Password does not meet requirement.`,
                 })
@@ -523,6 +565,132 @@ export default class AuthenticationController {
         };
 
         return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async notificationSettings(req: Request) {
+        const clientId = req.user._id;
+        const { error, value } = Joi.object<any>({
+            sms: Joi.string().optional().allow('').label('Sms notification'),
+            email: Joi.string().optional().allow('').label('Email notification'),
+            newUpdate: Joi.string().optional().allow('').label('News and updates notification')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const client = await datasources.clientDAOService.findById(clientId);
+        if(!client)
+            return Promise.reject(CustomAPIError.response("Client does not found.", HttpStatus.NOT_FOUND.code));
+
+        await datasources.clientDAOService.update({_id: client._id}, { 
+            smsNotification: value.sms === "true"
+                                ? true
+                                : value.sms === "false"
+                                ? false
+                                : client.smsNotification,
+            emailNotification: value.email === "true"
+                                ? true
+                                : value.email === "false"
+                                ? false
+                                : client.emailNotification,
+            newsAndUpdate: value.newUpdate === "true"
+                                ? true
+                                : value.newUpdate === "false"
+                                ? false
+                                : client.newsAndUpdate
+        });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully updated notification settings.'
+        };
+
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async updateProfile (req: Request) {
+
+        await this.doUpdateProfile(req);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully updated your profile'
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    private async doUpdateProfile(req: Request): Promise<HttpResponse<IClientModel>> {
+        return new Promise((resolve, reject) => {
+            form.parse(req, async (err, fields, files) => {
+                const clientId = req.user._id;
+                const { error, value } = Joi.object<any>({
+                    firstName: Joi.string().optional().allow('').label('First Name'),
+                    lastName: Joi.string().optional().allow('').label('Last Name'),
+                    phone: Joi.string().optional().allow('').label('Phone'),
+                    email: Joi.string().optional().allow('').label('Email'),
+                    companyName: Joi.string().optional().allow('').label('Company Name'),
+                    additionalInformation: Joi.string().optional().allow("").label('Additional Information'),
+                    dob: Joi.date().optional().allow(null).label('Date of birth'),
+                    image: Joi.any().label('Image')
+                }).validate(fields);
+                if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+                const [client] = await Promise.all([
+                    datasources.clientDAOService.findById(clientId)
+                ]);
+
+                if(!client)
+                    return reject(CustomAPIError.response('Client does not exist.', HttpStatus.NOT_FOUND.code));
+
+                if (value.email.toLowerCase() && value.email.toLowerCase() !== client.email) {
+                    const existingClient = await datasources.clientDAOService.findByAny({ email: value.email.toLowerCase() });
+                    if (existingClient) {
+                        return reject(CustomAPIError.response("A client with this email already exists.", HttpStatus.CONFLICT.code));
+                    }
+                }
+
+                // if (value.phone && value.phone !== client.phone) {
+                //     const existingClient = await datasources.clientDAOService.findByAny({ phone: value.phone });
+                //     if (existingClient) {
+                //         return reject(CustomAPIError.response("A client with this phone already exists.", HttpStatus.CONFLICT.code));
+                //     }
+                // }
+
+                if (value.companyName.toLowerCase() && value.companyName.toLowerCase() !== client.companyName) {
+                    const existingClient = await datasources.clientDAOService.findByAny({ companyName: value.companyName.toLowerCase() });
+                    if (existingClient) {
+                        return reject(CustomAPIError.response("A client with this company name already exists.", HttpStatus.CONFLICT.code));
+                    }
+                }
+
+                const basePath = `${UPLOAD_BASE_PATH}/photo`;
+
+                const { result: _image, error: imageError } = await Generic.handleImage(files.image as File, basePath);
+                if (imageError) {
+                    return reject(CustomAPIError.response(imageError, HttpStatus.BAD_REQUEST.code));
+                }
+
+                const payload = {
+                    firstName: value.firstName ? value.firstName : client.firstName,
+                    lastName: value.lastName ? value.lastName : client.lastName,
+                    phone: value.phone ? value.phone : client.phone,
+                    email: value.email ? value.email : client.email,
+                    companyName: value.companyName ? value.companyName : client.companyName,
+                    additionalInformation: value.additionalInformation ? value.additionalInformation : client.additionalInformation,
+                    dob: value.dob ? value.dob : client.dob,
+                    image: _image ? _image : client.image
+                }
+
+                await datasources.clientDAOService.update({_id: client._id}, payload);
+
+                return resolve('Success' as any);
+    
+            })
+        })
     }
 
 }

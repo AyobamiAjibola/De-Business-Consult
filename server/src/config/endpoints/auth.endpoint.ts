@@ -2,14 +2,17 @@ import { appCommonTypes } from '../../@types/app-common';
 import RouteEndpoint = appCommonTypes.RouteEndpoints;
 import { 
     adminLoggingHandler, 
+    changePasswordHandler, 
     changeResetPasswordHandler, 
     clientSignUpHandler, 
     createUserHandler, 
     fetchUsersHandler, 
     getAccessTokenHandler, 
     loggingHandler, 
+    notificationSettingsHandler, 
     preSignUpHandler, 
     resetPasswordHandler, 
+    updateProfileHandler, 
     updateUserStatusHandler, 
     validateResetPasswordOtpHandler, 
     validateSignUpLinkHandler 
@@ -87,6 +90,24 @@ const authEndpoints: RouteEndpoint  = [
         method: 'post',
         path: '/change-reset-password',
         handler: changeResetPasswordHandler
+    },
+    {
+        name: 'change password',
+        method: 'post',
+        path: '/change-password',
+        handler: changePasswordHandler
+    },
+    {
+        name: 'notification settings',
+        method: 'put',
+        path: '/notification-settings',
+        handler: notificationSettingsHandler
+    },
+    {
+        name: 'update client profile',
+        method: 'put',
+        path: '/update-client-profile',
+        handler: updateProfileHandler
     },
 ]
 

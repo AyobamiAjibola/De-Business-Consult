@@ -15,6 +15,7 @@ import { NextFunction, Request } from 'express';
 import UserToken from '../models/UserToken';
 import * as Jimp from 'jimp';
 import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, HASHTAGS, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
+import { UserType } from "../models/User";
 
 interface IGetImagePath {
   basePath: string;
@@ -84,6 +85,25 @@ export default class Generic {
     };
 
     run();
+  }
+
+  public static async validatePassword(password: string) {
+    const regex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/;
+
+    if (regex.test(password)) {
+      return true;  // Password meets all the requirements
+    } else {
+      return false; // Password does not meet the requirements
+    }
+  }
+
+
+  public static async handleAllowedUser(userType: any) {
+    if(userType.includes(UserType.SuperAdmin)) {
+      return true
+    } else {
+      return false
+    }
   }
 
   public static async fileExist(path: string) {

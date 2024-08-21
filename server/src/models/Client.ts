@@ -1,11 +1,21 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export enum INotification {
+    Sms = 'sms',
+    Email = 'email'
+}
+
+export enum ClientStatus {
+    Active = 'active',
+    Inactive = 'inactive'
+}
+
 interface IClient {
     firstName: string;
     lastName: string;
     phone: string;
     image: string;
-    status: boolean;
+    status: ClientStatus;
     email: string;
     password: string,
     passwordReset: {
@@ -14,7 +24,10 @@ interface IClient {
     },
     dob: Date,
     companyName: string,
-    additionalInformation: string
+    additionalInformation: string,
+    smsNotification: boolean,
+    emailNotification: boolean,
+    newsAndUpdate: boolean
 };
 
 const clientSchema = new Schema<IClient>({
@@ -22,7 +35,11 @@ const clientSchema = new Schema<IClient>({
     lastName: { type: String },
     phone: { type: String },
     image: { type: String },
-    status: { type: Boolean, default: true },
+    status: { 
+        type: String, 
+        enum: Object.values(ClientStatus), 
+        default: ClientStatus.Active 
+    },
     email: { type: String },
     companyName: { type: String },
     password: { type: String },
@@ -32,6 +49,9 @@ const clientSchema = new Schema<IClient>({
         exp: { type: Number },
         code: { type: String },
     },
+    smsNotification: { type: Boolean, default: false },
+    emailNotification: { type: Boolean, default: false },
+    newsAndUpdate: { type: Boolean, default: false }
 }, { timestamps: true });
   
 export interface IClientModel extends Document, IClient {}

@@ -23,14 +23,14 @@ export default function authenticateRouteWrapper(handler: AsyncWrapper) {
       logger.error(`malformed authorization: 'Bearer' missing`);
       return next(CustomAPIError.response(HttpStatus.UNAUTHORIZED.value, HttpStatus.UNAUTHORIZED.code));
     }
-
+   
     let authorization = '';
     if (token.startsWith('Bearer')) {
       authorization = token.split(' ')[1].trim();
     } else {
       authorization = token
     }
-  
+    
     try {
       const key = <string>settings.jwtAccessToken.key;
       const decodedToken = verify(authorization, key) as CustomJwtPayload;

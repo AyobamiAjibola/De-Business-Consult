@@ -3,7 +3,7 @@
   "lastName": "Consult",
   "email": "debiz_admin@debizconsult.com",
   "phone": "2348031987665",
-  "password": "$2a$12$Zo04UBElu99QCKcMgVsSnepe/E6E1jKRdUvnGGp2D82x0YGDdlvBS",
+  "password": "$2a$12$CL19dwUaOXIyADpsePGxheogASOWvSMMB4NkBdue0D1WzQl7VsKzW",
   "isAdmin": true,
-  "userType": [ "admin" ]
+  "userType": [ "super-admin", "admin" ]
 }

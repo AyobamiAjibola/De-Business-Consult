@@ -35,6 +35,10 @@ export default class CrudRepository<M extends Document, Id extends Types.ObjectI
       query.sort({ createdAt: -1 });
     }
 
+    // if(options?.status) {
+    //   query = query.find({ status: options.status });
+    // }
+
     // Limiting
     if (options?.limit) {
       query.limit(options.limit);
@@ -45,17 +49,6 @@ export default class CrudRepository<M extends Document, Id extends Types.ObjectI
       query.skip(options.skip);
     }
 
-    // Filter by date range
-    // if (options?.from || options?.to) {
-    //   const dateFilter: { createdAt?: { $gte?: Date, $lte?: Date } } = {};
-    //   if (options.from) {
-    //     dateFilter.createdAt = { ...dateFilter.createdAt, $gte: options.from };
-    //   }
-    //   if (options.to) {
-    //     dateFilter.createdAt = { ...dateFilter.createdAt, $lte: options.to };
-    //   }
-    //   query = query.find(dateFilter);
-    // }
     const today = new Date();
     const isNotToday = (date: Date | string) => {
       const d = new Date(date);

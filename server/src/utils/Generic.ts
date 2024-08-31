@@ -16,6 +16,7 @@ import UserToken from '../models/UserToken';
 import * as Jimp from 'jimp';
 import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, HASHTAGS, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
 import { UserType } from "../models/User";
+import datasources from '../services/dao';
 
 interface IGetImagePath {
   basePath: string;
@@ -29,6 +30,13 @@ interface IRandomize {
   string?: boolean;
   mixed?: boolean;
   count?: number;
+}
+
+interface IExistItems {
+  item: string, //this is the item you want check for
+  item2: string, //item to check against
+  daoService: any, // the db entity to check from
+  customErrorMsg: string // error message to be displayed
 }
 
 interface Expense {
@@ -85,6 +93,17 @@ export default class Generic {
     };
 
     run();
+  }
+
+  public static async checkExistingEntity(items: IExistItems) {
+    const parameter = items.item2;
+    const dbService = items.daoService;
+    if (items.item.toLowerCase() && items.item.toLowerCase() !== parameter) {
+      const existingSubscriber = await dbService.findByAny({ parameter: items.item.toLowerCase() });
+      if (existingSubscriber) {
+        return Promise.reject(CustomAPIError.response(items.customErrorMsg, HttpStatus.CONFLICT.code));
+      }
+    }
   }
 
   public static async validatePassword(password: string) {

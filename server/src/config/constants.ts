@@ -43,6 +43,9 @@ import QueueEvents = appCommonTypes.QueueEvents;
   };
 
   export const AGENDA_COLLECTION_NAME = 'cron_jobs';
+  export const AGENDA_SCHEDULE_NAME = 'scheduled_jobs';
+  export const BOOK_APPOINTMENT = 'event:BOOK_APPOINTMENT';
+  export const CANCEL_APPOINTMENT = 'event:CANCEL_APPOINTMENT';
 
   export const UPLOAD_BASE_PATH = 'uploads';
   export const HOME_ADDRESS = 'HOME';

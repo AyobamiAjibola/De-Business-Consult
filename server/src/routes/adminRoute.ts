@@ -43,3 +43,198 @@ export const toggleClientStatusHandler = authenticateRouteWrapper(async (req, re
     const response = await adminController.toggleClientStatus(req);
     res.status(response.code).json(response);
 });
+
+export const createBlogCategoryHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createBlogCategory(req);
+    res.status(response.code).json(response);
+});
+
+export const deleteBlogCategoryHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteBlogCategory(req);
+    res.status(response.code).json(response);
+});
+
+export const updateBlogCategoryHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateBlogCategory(req);
+    res.status(response.code).json(response);
+});
+
+export const fetchBlogCategoriesHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchBlogCategories();
+    res.status(response.code).json(response);
+};
+
+export const getSingleBlogCategoryHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.getSingleBlogCategory(req);
+    res.status(response.code).json(response);
+};
+
+export const createBlogHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createBlog(req);
+    res.status(response.code).json(response);
+});
+
+export const updateBlogHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateBlog(req);
+    res.status(response.code).json(response);
+});
+
+export const commentOnBlogHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.commentOnBlog(req);
+    res.status(response.code).json(response);
+};
+
+export const deleteBlogHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteBlog(req);
+    res.status(response.code).json(response);
+});
+
+export const fetchBlogsHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchBlogs();
+    res.status(response.code).json(response);
+};
+
+export const likeBlogHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.likeBlog(req);
+    res.status(response.code).json(response);
+};
+
+export const fetchBlogCommentsHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchBlogComments(req);
+    res.status(response.code).json(response);
+};
+
+export const changeBlogStatusHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.changeBlogStatus(req);
+    res.status(response.code).json(response);
+});
+
+export const singleBlogHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.singleBlog(req);
+    res.status(response.code).json(response);
+};
+
+export const getSingleAuthorHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.getSingleAuthor(req);
+    res.status(response.code).json(response);
+};
+
+export const fetchAuthorsHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchAuthors(req);
+    res.status(response.code).json(response);
+};
+
+export const deleteAuthorHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteAuthor(req);
+    res.status(response.code).json(response);
+});
+
+export const createAuthorHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createAuthor(req);
+    res.status(response.code).json(response);
+});
+
+export const updateAuthorHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateAuthor(req);
+    res.status(response.code).json(response);
+});
+
+export const getSingleNewsLetterHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.getSingleNewsLetter(req);
+    res.status(response.code).json(response);
+});
+
+export const fetchNewslettersHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.fetchNewsletters(req);
+    res.status(response.code).json(response);
+});
+
+export const deleteNewsletterHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteNewsletter(req);
+    res.status(response.code).json(response);
+});
+
+export const changeNewsLetterStatusHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.changeNewsLetterStatus(req);
+    res.status(response.code).json(response);
+});
+
+export const createNewsLetterHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createNewsLetter(req);
+    res.status(response.code).json(response);
+});
+
+export const updateNewsLetterHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateNewsLetter(req);
+    res.status(response.code).json(response);
+});
+
+export const createDeDocsHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createDeDocs(req);
+    res.status(response.code).json(response);
+});
+
+export const updateDeDocsHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateDeDocs(req);
+    res.status(response.code).json(response);
+});
+
+export const getDocsHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.getDocs(req);
+    res.status(response.code).json(response);
+};
+
+export const createSubscriberHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createSubscriber(req);
+    res.status(response.code).json(response);
+});
+
+export const updateSubscriberHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateSubscriber(req);
+    res.status(response.code).json(response);
+});
+
+export const getSingleSubscriberHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.getSingleSubscriber(req);
+    res.status(response.code).json(response);
+});
+
+export const fetchSubscribersHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchSubscribers(req);
+    res.status(response.code).json(response);
+};
+
+export const deleteSubscriberHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteSubscriber(req);
+    res.status(response.code).json(response);
+});
+
+export const changeSubscriberStatusHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.changeSubscriberStatus(req);
+    res.status(response.code).json(response);
+});
+
+export const createTestimonialHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createTestimonial(req);
+    res.status(response.code).json(response);
+});
+
+export const updateTestimonialHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.updateTestimonial(req);
+    res.status(response.code).json(response);
+});
+
+export const getSingleTestimonialHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.getSingleTestimonial(req);
+    res.status(response.code).json(response);
+};
+
+export const fetchTestimonialsHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchTestimonials(req);
+    res.status(response.code).json(response);
+};
+
+export const deleteTestimonialHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteTestimonial(req);
+    res.status(response.code).json(response);
+});

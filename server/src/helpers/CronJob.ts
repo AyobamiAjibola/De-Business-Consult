@@ -19,4 +19,10 @@ export default class CronJob {
     // }
     // }
   }
+
+  // public static async sendAppointmentNotification(): Promise<void> {
+  //   const emailClients = await datasources.clientDAOService.findAll({
+  //     emailNotification: true
+  //   });
+  // }
 }

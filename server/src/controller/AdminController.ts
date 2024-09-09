@@ -920,7 +920,7 @@ export default class AdminController {
         });
 
         await sendMailService.sendMail({
-            to: "ayurbarmi5@gmail.com",//process.env.SMTP_EMAIL_FROM,
+            to: process.env.SMTP_EMAIL_FROM,
             replyTo: process.env.SMTP_EMAIL_FROM,
             from: `${value.firstName} ${value.lastName} <${value.email}>`,
             subject: `Contact us email.`,

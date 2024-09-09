@@ -184,10 +184,10 @@ export const getDocsHandler = async (req: Request, res: Response) =>  {
     res.status(response.code).json(response);
 };
 
-export const createSubscriberHandler = authenticateRouteWrapper(async (req, res) =>  {
+export const createSubscriberHandler = async (req: Request, res: Response) =>  {
     const response = await adminController.createSubscriber(req);
     res.status(response.code).json(response);
-});
+};
 
 export const updateSubscriberHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await adminController.updateSubscriber(req);
@@ -238,3 +238,18 @@ export const deleteTestimonialHandler = authenticateRouteWrapper(async (req, res
     const response = await adminController.deleteTestimonial(req);
     res.status(response.code).json(response);
 });
+
+export const getSingleClientHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.getSingleClient(req);
+    res.status(response.code).json(response);
+};
+
+export const getAllClientsHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.getAllClients(req);
+    res.status(response.code).json(response);
+});
+
+export const contactUsFormHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.contactUsForm(req);
+    res.status(response.code).json(response);
+};

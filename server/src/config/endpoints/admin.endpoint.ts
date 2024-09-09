@@ -5,6 +5,7 @@ import {
     changeNewsLetterStatusHandler,
     changeSubscriberStatusHandler,
     commentOnBlogHandler,
+    contactUsFormHandler,
     createAuthorHandler,
     createBlogCategoryHandler,
     createBlogHandler,
@@ -30,9 +31,11 @@ import {
     fetchServicesHandler, 
     fetchSubscribersHandler, 
     fetchTestimonialsHandler, 
+    getAllClientsHandler, 
     getDocsHandler, 
     getSingleAuthorHandler, 
     getSingleBlogCategoryHandler, 
+    getSingleClientHandler, 
     getSingleNewsLetterHandler, 
     getSingleServiceHandler, 
     getSingleSubscriberHandler, 
@@ -332,6 +335,24 @@ const adminEndpoints: RouteEndpoint  = [
         method: 'delete',
         path: '/delete-testimonial/:testimonialId',
         handler: deleteTestimonialHandler
+    },
+    {
+        name: 'get client',
+        method: 'get',
+        path: '/get-single-client/:clientId',
+        handler: getSingleClientHandler
+    },
+    {
+        name: 'get all clients',
+        method: 'get',
+        path: '/get-all-clients',
+        handler: getAllClientsHandler
+    },
+    {
+        name: 'Contact us form',
+        method: 'post',
+        path: '/contact-us-form',
+        handler: contactUsFormHandler
     },
 ]
 

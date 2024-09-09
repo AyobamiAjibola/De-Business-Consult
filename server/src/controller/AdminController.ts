@@ -23,6 +23,7 @@ import mail_template from "../resources/template/email/newsletter";
 import DeBizDocs, { IDeBizDocsModel } from "../models/DeBizDocs";
 import { ISubscriberModel, SubscriberStatus } from "../models/Subscriber";
 import { ITestimonialModel } from "../models/Testimonial";
+import contact_us_template from "../resources/template/email/contactUs";
 
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
@@ -205,6 +206,49 @@ export default class AdminController {
 
         return Promise.resolve(response);
 
+    }
+
+    @TryCatch
+    public async getSingleClient(req: Request) {
+        const clientId = req.params.clientId;
+
+        const [client] = await Promise.all([
+            datasources.clientDAOService.findById(clientId)
+        ]);
+
+        if(!client)
+            return Promise.reject(CustomAPIError.response("Client does not exist", HttpStatus.NOT_FOUND.code));
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successful.`,
+            result: client
+        };
+
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async getAllClients(req: Request) {
+
+        const userId = req.user._id;
+
+        const [user, clients] = await Promise.all([
+            datasources.userDAOService.findById(userId),
+            datasources.clientDAOService.findAll({})
+        ]);
+
+        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+        if(user && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successful.`,
+            result: clients
+        };
+
+        return Promise.resolve(response);
     }
 
     @TryCatch
@@ -857,6 +901,42 @@ export default class AdminController {
     }
 
     @TryCatch
+    public async contactUsForm(req: Request) {
+
+        const { error, value } = Joi.object<any>({
+            firstName: Joi.string().required().label('First Name'),
+            lastName: Joi.string().required().label('Last Name'),
+            email: Joi.string().required().label('Email'),
+            phone: Joi.string().required().label('Phone'),
+            message: Joi.string().required().label('Message'),
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const mail = contact_us_template({
+            message: value.message,
+            fullName: `${value.firstName} ${value.lastName}`,
+            email: value.email,
+            phone: value.phone
+        });
+
+        await sendMailService.sendMail({
+            to: "ayurbarmi5@gmail.com",//process.env.SMTP_EMAIL_FROM,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${value.firstName} ${value.lastName} <${value.email}>`,
+            subject: `Contact us email.`,
+            html: mail
+        });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     public async updateDeDocs(req: Request) {
 
         const { error, value } = Joi.object<any>({
@@ -916,8 +996,8 @@ export default class AdminController {
     public async createSubscriber(req: Request) {
 
         const { error, value } = Joi.object<ISubscriberModel>({
-            firstName: Joi.string().required().label('First Name'),
-            lastName: Joi.string().required().label('Last Name'),
+            firstName: Joi.string().optional().allow('').label('First Name'),
+            lastName: Joi.string().optional().allow('').label('Last Name'),
             email: Joi.string().required().label('Email'),
         }).validate(req.body);
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));

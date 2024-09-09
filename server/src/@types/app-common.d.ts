@@ -136,7 +136,10 @@ export declare namespace appCommonTypes {
   interface MailTextConfig {
     message?: string,
     subText?: string,
-    content?: string
+    content?: string,
+    fullName?: string,
+    email?: string,
+    phone?: string
   }
 }
 

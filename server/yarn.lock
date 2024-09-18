@@ -5266,7 +5266,7 @@ __metadata:
     nodemailer: "npm:^6.9.4"
     redis: "npm:^4.6.12"
     reflect-metadata: "npm:^0.1.13"
-    socket.io: "npm:^4.6.2"
+    socket.io: "npm:^4.7.5"
     supertest: "npm:^6.3.3"
     ts-jest: "npm:^29.1.0"
     ts-node: "npm:^10.9.1"
@@ -9361,7 +9361,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"socket.io@npm:^4.6.2":
+"socket.io@npm:^4.7.5":
   version: 4.7.5
   resolution: "socket.io@npm:4.7.5"
   dependencies:

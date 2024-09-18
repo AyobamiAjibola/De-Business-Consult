@@ -11,6 +11,8 @@ import DeBizDocsRepository from "../../repositories/DeBizDocsRepository";
 import NewsLetterRepository from "../../repositories/NewsLetterRepository";
 import SubscriberRepository from "../../repositories/SubscriberRepository";
 import TestimonialRepository from "../../repositories/TestimonialRepository";
+import ChatMessageRepository from "../../repositories/ChatMessageRepository";
+import ChatRepository from "../../repositories/ChatRepository";
 
 import UserDAOService from "./UserDAOService";
 import ClientDAOService from "./ClientDAOService";
@@ -25,6 +27,8 @@ import DeBizDocsDAOService from "./DeBizDocsDAOService";
 import NewsLetterDAOService from "./NewsLetterDAOService";
 import SubscriberDAOService from "./SubscriberDAOService";
 import TestimonialDAOService from "./TestimonialDAOService";
+import ChatMessageDAOService from "./ChatMessageDAOService";
+import ChatDAOService from "./ChatDAOService";
 
 const userRepository = new UserRepository();
 const clientRepository= new ClientRepository();
@@ -39,6 +43,8 @@ const deBizDocsRepository= new DeBizDocsRepository();
 const newsLetterRepository= new NewsLetterRepository();
 const subscriberRepository= new SubscriberRepository();
 const testimonialRepository= new TestimonialRepository();
+const chatMessageRepository = new ChatMessageRepository();
+const chatRepository = new ChatRepository();
 
 const userDAOService = new UserDAOService(userRepository);
 const clientDAOService = new ClientDAOService(clientRepository);
@@ -53,9 +59,13 @@ const deBizDocsDAOService = new DeBizDocsDAOService(deBizDocsRepository);
 const newsLetterDAOService = new NewsLetterDAOService(newsLetterRepository);
 const subscriberDAOService = new SubscriberDAOService(subscriberRepository);
 const testimonialDAOService = new TestimonialDAOService(testimonialRepository);
+const chatMessageDAOService = new ChatMessageDAOService(chatMessageRepository);
+const chatDAOService = new ChatDAOService(chatRepository);
 
 export default {
     userDAOService,
+    chatMessageDAOService,
+    chatDAOService,
     applicationDAOService,
     transactionDAOService,
     signUpAtemptDAOService,

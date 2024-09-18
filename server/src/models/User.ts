@@ -21,8 +21,8 @@ interface IUser {
     email: string;
     password: string,
     passwordReset: {
-      exp: Date | null,
-      code: string
+        exp: number,
+        code: string
     },
     userType: UserType[];
 };

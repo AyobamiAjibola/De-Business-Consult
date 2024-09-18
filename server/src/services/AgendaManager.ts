@@ -3,7 +3,6 @@ import moment from 'moment';
 import { AppAgenda } from 'agenda-schedule-wrapper';
 
 import { BOOK_APPOINTMENT, CANCEL_APPOINTMENT } from '../config/constants';
-import EventEmitter from 'events';
 
 export default function agendaManager() {
 //   emitter.on(BOOK_APPOINTMENT, ({ appointment }) => {

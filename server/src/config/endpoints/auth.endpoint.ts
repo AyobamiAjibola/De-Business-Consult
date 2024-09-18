@@ -2,7 +2,9 @@ import { appCommonTypes } from '../../@types/app-common';
 import RouteEndpoint = appCommonTypes.RouteEndpoints;
 import { 
     adminLoggingHandler, 
+    changePasswordAdminHandler, 
     changePasswordHandler, 
+    changeResetPasswordAdminHandler, 
     changeResetPasswordHandler, 
     clientSignUpHandler, 
     createUserHandler, 
@@ -11,9 +13,12 @@ import {
     loggingHandler, 
     notificationSettingsHandler, 
     preSignUpHandler, 
+    resetAdminPasswordHandler, 
     resetPasswordHandler, 
+    updateProfileAdminHandler, 
     updateProfileHandler, 
     updateUserStatusHandler, 
+    validateResetAdminPasswordOtpHandler, 
     validateResetPasswordOtpHandler, 
     validateSignUpLinkHandler 
 } from '../../routes/authRoute';
@@ -98,6 +103,30 @@ const authEndpoints: RouteEndpoint  = [
         handler: changePasswordHandler
     },
     {
+        name: 'reset password admin',
+        method: 'post',
+        path: '/reset-password-admin',
+        handler: resetAdminPasswordHandler
+    },
+    {
+        name: 'validate reset password otp admin',
+        method: 'post',
+        path: '/validate-reset-password-otp-admin',
+        handler: validateResetAdminPasswordOtpHandler
+    },
+    {
+        name: 'change reset password admin',
+        method: 'post',
+        path: '/change-reset-password-admin',
+        handler: changeResetPasswordAdminHandler
+    },
+    {
+        name: 'change password admin',
+        method: 'post',
+        path: '/change-password-admin',
+        handler: changePasswordAdminHandler
+    },
+    {
         name: 'notification settings',
         method: 'put',
         path: '/notification-settings',
@@ -109,6 +138,12 @@ const authEndpoints: RouteEndpoint  = [
         path: '/update-client-profile',
         handler: updateProfileHandler
     },
+    {
+        name: 'update client profile admin',
+        method: 'put',
+        path: '/update-client-profile-admin',
+        handler: updateProfileAdminHandler
+    }
 ]
 
 export default authEndpoints;

@@ -417,7 +417,7 @@ export default class AuthenticationController {
         const [client] = await Promise.all([
             datasources.clientDAOService.findByAny({ email: value.email })
         ]); 
-        if(!client) return Promise.reject(CustomAPIError.response("User with this email does not exist.", HttpStatus.NOT_FOUND.code));
+        if(!client) return Promise.reject(CustomAPIError.response("Client with this email does not exist.", HttpStatus.NOT_FOUND.code));
 
         const otp = Generic.generateRandomPassword(10);
         const expiredAt = moment().add(30, 'minute').valueOf();
@@ -452,6 +452,50 @@ export default class AuthenticationController {
     };
 
     @TryCatch
+    public async resetAdminPassword(req: Request) {
+        const { error, value } = Joi.object<any>({
+            email: Joi.string().required().label('Email')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const [user] = await Promise.all([
+            datasources.userDAOService.findByAny({ email: value.email })
+        ]); 
+        if(!user) return Promise.reject(CustomAPIError.response("User with this email does not exist.", HttpStatus.NOT_FOUND.code));
+
+        const otp = Generic.generateRandomPassword(10);
+        const expiredAt = moment().add(30, 'minute').valueOf();
+        const resetLink = `${process.env.CLIENT_URL}/resetpassword?otp=${otp}&email=${value.email}`;
+
+        //SEND OTP TO USER EMAIL
+        const mail = signup_template({
+            message: `Your reset password link`,
+            link: resetLink
+        });
+
+        await sendMailService.sendMail({
+            to: value.email,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+            subject: `De Business Consult.`,
+            html: mail
+        });
+
+        await datasources.userDAOService.updateByAny({
+            _id: user._id
+        }, { passwordReset: { exp: expiredAt, code: otp } })
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `A password reset link has been sent to your email.`,
+            result: resetLink
+        };
+
+        return Promise.resolve(response);
+
+    };
+
+    @TryCatch
     public async validateResetPasswordOtp(req: Request) {
         const { error, value } = Joi.object<any>({
             email: Joi.string().required().label('Email'),
@@ -464,12 +508,41 @@ export default class AuthenticationController {
         const [client] = await Promise.all([
             datasources.clientDAOService.findByAny({ email: value.email })
         ]); 
-        if(!client) return Promise.reject(CustomAPIError.response("User with this email does not exist.", HttpStatus.NOT_FOUND.code));
+        if(!client) return Promise.reject(CustomAPIError.response("Client with this email does not exist.", HttpStatus.NOT_FOUND.code));
 
         if(value.otp !== client.passwordReset.code)
             return Promise.reject(CustomAPIError.response("Otp do not match. Please try again.", HttpStatus.NOT_FOUND.code));
 
         if(client.passwordReset.exp < currentDateTime)
+            return Promise.reject(CustomAPIError.response("Password reset link has expired.", HttpStatus.FORBIDDEN.code));
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Password reset link in valid.`
+        };
+
+        return Promise.resolve(response);
+    };
+
+    @TryCatch
+    public async validateResetAdminPasswordOtp(req: Request) {
+        const { error, value } = Joi.object<any>({
+            email: Joi.string().required().label('Email'),
+            otp: Joi.string().required().label('Otp')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const currentDateTime = moment().valueOf();
+
+        const [user] = await Promise.all([
+            datasources.userDAOService.findByAny({ email: value.email })
+        ]); 
+        if(!user) return Promise.reject(CustomAPIError.response("User with this email does not exist.", HttpStatus.NOT_FOUND.code));
+
+        if(value.otp !== user.passwordReset.code)
+            return Promise.reject(CustomAPIError.response("Otp do not match. Please try again.", HttpStatus.NOT_FOUND.code));
+
+        if(user.passwordReset.exp < currentDateTime)
             return Promise.reject(CustomAPIError.response("Password reset link has expired.", HttpStatus.FORBIDDEN.code));
 
         const response: HttpResponse<any> = {
@@ -521,6 +594,46 @@ export default class AuthenticationController {
     }
 
     @TryCatch
+    public async changePasswordAdmin(req: Request) {
+        const userId = req.user._id;
+        const { error, value } = Joi.object<any>({
+            newPassword: Joi.string()
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
+                .messages({
+                "string.pattern.base": `Password does not meet requirement.`,
+                })
+                .required()
+                .label("New Password"),
+            confirmNewPassword: Joi.ref('newPassword'),
+            currentPassword: Joi.string().required().label("Current password")
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const user = await datasources.userDAOService.findById(userId);
+        if(!user)
+            return Promise.reject(CustomAPIError.response("Client does not found.", HttpStatus.NOT_FOUND.code));
+        
+        const hash = user.password as string;
+
+        const isMatch = await this.passwordEncoder?.match(value.currentPassword.trim(), hash ? hash.trim() : '');
+        if(!isMatch) return Promise.reject(CustomAPIError.response(`The current password entered does not match the old password.`, HttpStatus.UNAUTHORIZED.code));
+
+        const password = await this.passwordEncoder?.encode(value.newPassword as string);
+
+        await datasources.userDAOService.updateByAny({_id: user._id}, {
+            password
+        });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `You have successfully changed your password.`
+        };
+
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     public async changeResetPassword(req: Request) {
         const { error, value } = Joi.object<any>({
             password: Joi.string()
@@ -541,7 +654,7 @@ export default class AuthenticationController {
         const [client] = await Promise.all([
             datasources.clientDAOService.findByAny({ email: value.email })
         ]); 
-        if(!client) return Promise.reject(CustomAPIError.response("User with this email does not exist.", HttpStatus.NOT_FOUND.code));
+        if(!client) return Promise.reject(CustomAPIError.response("Client with this email does not exist.", HttpStatus.NOT_FOUND.code));
 
         if(value.otp !== client.passwordReset.code)
             return Promise.reject(CustomAPIError.response("Otp do not match. Please try again.", HttpStatus.NOT_FOUND.code));
@@ -552,6 +665,53 @@ export default class AuthenticationController {
         const password = await this.passwordEncoder?.encode(value.password as string);
 
         await datasources.clientDAOService.updateByAny({_id: client._id}, {
+            password,
+            passwordReset: {
+                code: '',
+                exp: 0
+            }
+        })
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Password reset was successful, proceed to login.`
+        };
+
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async changeResetPasswordAdmin(req: Request) {
+        const { error, value } = Joi.object<any>({
+            password: Joi.string()
+                .regex(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/)
+                .messages({
+                "string.pattern.base": `Password does not meet requirement.`,
+                })
+                .required()
+                .label("Password"),
+            confirmPassword: Joi.ref('password'),
+            email: Joi.string().required().label('Email'),
+            otp: Joi.string().required().label('Otp')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const currentDateTime = moment().valueOf();
+
+        const [user] = await Promise.all([
+            datasources.userDAOService.findByAny({ email: value.email })
+        ]); 
+        if(!user) return Promise.reject(CustomAPIError.response("User with this email does not exist.", HttpStatus.NOT_FOUND.code));
+
+        if(value.otp !== user.passwordReset.code)
+            return Promise.reject(CustomAPIError.response("Otp do not match. Please try again.", HttpStatus.NOT_FOUND.code));
+
+        if(user.passwordReset.exp < currentDateTime)
+            return Promise.reject(CustomAPIError.response("Password reset link has expired. Please request a new link.", HttpStatus.FORBIDDEN.code));
+
+        const password = await this.passwordEncoder?.encode(value.password as string);
+
+        await datasources.userDAOService.updateByAny({_id: user._id}, {
             password,
             passwordReset: {
                 code: '',
@@ -623,6 +783,20 @@ export default class AuthenticationController {
     }
 
     @TryCatch
+    public async updateProfileAdmin (req: Request) {
+
+        await this.doUpdateAdminProfile(req);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully updated your profile'
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     private async doUpdateProfile(req: Request): Promise<HttpResponse<IClientModel>> {
         return new Promise((resolve, reject) => {
             form.parse(req, async (err, fields, files) => {
@@ -646,7 +820,7 @@ export default class AuthenticationController {
                 if(!client)
                     return reject(CustomAPIError.response('Client does not exist.', HttpStatus.NOT_FOUND.code));
 
-                if (value.email.toLowerCase() && value.email.toLowerCase() !== client.email) {
+                if (value.email && value.email !== client.email) {
                     const existingClient = await datasources.clientDAOService.findByAny({ email: value.email.toLowerCase() });
                     if (existingClient) {
                         return reject(CustomAPIError.response("A client with this email already exists.", HttpStatus.CONFLICT.code));
@@ -686,6 +860,57 @@ export default class AuthenticationController {
                 }
 
                 await datasources.clientDAOService.update({_id: client._id}, payload);
+
+                return resolve('Success' as any);
+    
+            })
+        })
+    }
+
+    @TryCatch
+    private async doUpdateAdminProfile(req: Request): Promise<HttpResponse<IClientModel>> {
+        return new Promise((resolve, reject) => {
+            form.parse(req, async (err, fields, files) => {
+                const userId = req.user._id;
+                const { error, value } = Joi.object<any>({
+                    firstName: Joi.string().optional().allow('').label('First Name'),
+                    lastName: Joi.string().optional().allow('').label('Last Name'),
+                    phone: Joi.string().optional().allow('').label('Phone'),
+                    email: Joi.string().optional().allow('').label('Email'),
+                    image: Joi.any().label('Image')
+                }).validate(fields);
+                if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+                const [user] = await Promise.all([
+                    datasources.userDAOService.findById(userId)
+                ]);
+
+                if(!user)
+                    return reject(CustomAPIError.response('User does not exist.', HttpStatus.NOT_FOUND.code));
+
+                if (value.email && value.email !== user.email) {
+                    const existingClient = await datasources.userDAOService.findByAny({ email: value.email.toLowerCase() });
+                    if (existingClient) {
+                        return reject(CustomAPIError.response("A user with this email already exists.", HttpStatus.CONFLICT.code));
+                    }
+                }
+
+                const basePath = `${UPLOAD_BASE_PATH}/photo`;
+
+                const { result: _image, error: imageError } = await Generic.handleImage(files.image as File, basePath);
+                if (imageError) {
+                    return reject(CustomAPIError.response(imageError, HttpStatus.BAD_REQUEST.code));
+                }
+
+                const payload = {
+                    firstName: value.firstName ? value.firstName : user.firstName,
+                    lastName: value.lastName ? value.lastName : user.lastName,
+                    phone: value.phone ? value.phone : user.phone,
+                    email: value.email ? value.email : user.email,
+                    image: _image ? _image : user.image
+                }
+
+                await datasources.userDAOService.update({_id: user._id}, payload);
 
                 return resolve('Success' as any);
     

@@ -60,8 +60,18 @@ export const resetPasswordHandler = async (req: Request, res: Response) =>  {
     res.status(response.code).json(response);
 };
 
+export const resetAdminPasswordHandler = async (req: Request, res: Response) =>  {
+    const response = await authController.resetAdminPassword(req);
+    res.status(response.code).json(response);
+};
+
 export const validateResetPasswordOtpHandler = async (req: Request, res: Response) =>  {
     const response = await authController.validateResetPasswordOtp(req);
+    res.status(response.code).json(response);
+};
+
+export const validateResetAdminPasswordOtpHandler = async (req: Request, res: Response) =>  {
+    const response = await authController.validateResetAdminPasswordOtp(req);
     res.status(response.code).json(response);
 };
 
@@ -70,8 +80,19 @@ export const changeResetPasswordHandler = async (req: Request, res: Response) =>
     res.status(response.code).json(response);
 };
 
+export const changeResetPasswordAdminHandler = async (req: Request, res: Response) =>  {
+    const response = await authController.changeResetPasswordAdmin(req);
+    res.status(response.code).json(response);
+};
+
 export const changePasswordHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await authController.changePassword(req);
+
+    res.status(response.code).json(response);
+});
+
+export const changePasswordAdminHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.changePasswordAdmin(req);
 
     res.status(response.code).json(response);
 });
@@ -88,5 +109,8 @@ export const updateProfileHandler = authenticateRouteWrapper(async (req, res) =>
     res.status(response.code).json(response);
 });
 
+export const updateProfileAdminHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.updateProfileAdmin(req);
 
-
+    res.status(response.code).json(response);
+});

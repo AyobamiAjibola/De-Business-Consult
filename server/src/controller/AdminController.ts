@@ -1549,7 +1549,7 @@ export default class AdminController {
                     titleImage: Joi.any().label('Title image'),
                     bodyImages: Joi.array().items(Joi.string()).label("images"),
                     author: Joi.string().required().label('Author'),
-                    status: Joi.string().required().label('status')
+                    status: Joi.string().optional().allow('').label('status')
                 }).validate(fields);
                 if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
  
@@ -1565,6 +1565,9 @@ export default class AdminController {
 
                 if(blogExist)
                     return reject(CustomAPIError.response(`A blog with this link: ${process.env.CLIENT_URL}${value.urlSlug} already exist.`, HttpStatus.FORBIDDEN.code))
+
+                if(!author)
+                    return reject(CustomAPIError.response(`Author does not exist.`, HttpStatus.FORBIDDEN.code))
 
                 const isAllowed = await Generic.handleAllowedUser(user && user.userType)
                 if(user && !isAllowed)
@@ -1607,7 +1610,8 @@ export default class AdminController {
                     category: category._id,
                     titleImage: _titleImage ? _titleImage : '',
                     bodyImages: updatedBodyImages.length > 0 ? updatedBodyImages : [],
-                    author: author._id
+                    author: author._id,
+                    status: value.status ? value.status : BlogStatus.Published
                 }
 
                 const blog: any = await datasources.blogDAOService.create(payload as IBlogModel);
@@ -1657,6 +1661,9 @@ export default class AdminController {
                         return Promise.reject(CustomAPIError.response(`A blog with this link: ${process.env.CLIENT_URL}${value.urlSlug} already exist.`, HttpStatus.CONFLICT.code));
                     }
                 }
+
+                if(!author)
+                    return reject(CustomAPIError.response(`Author does not exist.`, HttpStatus.FORBIDDEN.code))
 
                 const isAllowed = await Generic.handleAllowedUser(user && user.userType)
                 if(user && !isAllowed)

@@ -23,16 +23,16 @@ class SendMailService {
     })
 
     public sendMail(data: any): Promise<any> {
-        return new Promise((resolve, reject) => {
-          this.transporter.sendMail(data, (error, info) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve(info);
-            }
-          });
+      return new Promise((resolve, reject) => {
+        this.transporter.sendMail(data, (error, info) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(info);
+          }
         });
-      }
+      });
+    }
 };
 
 export default SendMailService;

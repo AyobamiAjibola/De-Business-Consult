@@ -1582,17 +1582,15 @@ export default class AdminController {
                 let updatedBodyImages: any[] = [];
 
                 for (const key of Object.keys(files)) {
-                    const imageFile = files[key] as any;
-
-                    if(imageFile.bodyImages) {
+                    if(key === "bodyImages") {
                         const [{ result, error }] = await Promise.all([
-                            Generic.handleFiles(imageFile.bodyImages as File, basePathBodyImage)
+                            Generic.handleFiles(files.bodyImages as File, basePathBodyImage)
                         ]);
     
                         if (error) {
                             return reject(CustomAPIError.response(error as string, HttpStatus.BAD_REQUEST.code));
                         }
-    
+
                         updatedBodyImages.push(result);
                     }
                 }
@@ -1678,17 +1676,17 @@ export default class AdminController {
                 let updatedBodyImages: any[] = [];
 
                 for (const key of Object.keys(files)) {
-                    const imageFile = files[key] as any;
+                    if(key === "bodyImages") {
+                        const [{ result, error }] = await Promise.all([
+                            Generic.handleFiles(files.bodyImages as File, basePathBodyImage)
+                        ]);
+    
+                        if (error) {
+                            return reject(CustomAPIError.response(error as string, HttpStatus.BAD_REQUEST.code));
+                        }
 
-                    const [{ result, error }] = await Promise.all([
-                        Generic.handleFiles(imageFile as File, basePathBodyImage)
-                    ]);
-
-                    if (error) {
-                        return reject(CustomAPIError.response(error as string, HttpStatus.BAD_REQUEST.code));
+                        updatedBodyImages.push(result);
                     }
-                
-                    updatedBodyImages.push(result);
                 }
 
                 const [{ result: _titleImage, error: imageError }] = await Promise.all([
@@ -1706,7 +1704,7 @@ export default class AdminController {
                     status: value.status ? value.status : blog.status,
                     category: value.category ? category._id : blog.category,
                     titleImage: _titleImage ? _titleImage : blog.titleImage,
-                    bodyImages: updatedBodyImages.length > 0 ? updatedBodyImages : blog.bodyImages,
+                    bodyImages: updatedBodyImages.length > 0 ? [...blog.bodyImages, ...updatedBodyImages] : blog.bodyImages,
                     author: value.author ? author._id : blog.author
                 }
 

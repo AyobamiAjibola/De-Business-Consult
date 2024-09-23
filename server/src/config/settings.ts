@@ -108,6 +108,11 @@ const settings: AppSettings = {
     client_ID: '',
     client_secret: '',
     instagram_callbackURL: ''
+  },
+  stripe: {
+    secret_key: <string>process.env.STRIPE_SECRET_KEY,
+    api_version: <any>process.env.STRIPE_API_VERSION,
+    web_hook_secret: <string>process.env.STRIPE_WEBHOOK_SECRET
   }
 };
 

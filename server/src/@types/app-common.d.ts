@@ -90,6 +90,11 @@ export declare namespace appCommonTypes {
     },
     rabbitMq: {
       connection: string
+    },
+    stripe: {
+      secret_key: string,
+      api_version: any,
+      web_hook_secret: string
     }
   }
 

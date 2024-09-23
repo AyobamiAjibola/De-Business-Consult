@@ -4,6 +4,12 @@ import { Request, Response } from "express";
 
 const applicationController = new ApplicationController();
 
+export const webhookHandler = async (req: Request, res: Response) =>  {
+    const response = await applicationController.webhook(req);
+
+    res.status(response.code).json(response);
+};
+
 export const feeCalculatorV1Handler = async (req: Request, res: Response) =>  {
     const response = await applicationController.feeCalculatorV1(req);
 

@@ -9,15 +9,80 @@ import { UPLOAD_BASE_PATH } from "../config/constants";
 import formidable = require("formidable");
 import Application, { ApplicationStatus, IApplicationModel } from "../models/Application";
 import Generic from "../utils/Generic";
-import archiver from 'archiver';
-import fs from 'fs';
 import { Request, Response } from "express";
-import { UserType } from "../models/User";
+import StripeWebhookService from "../services/StripeWebhookService";
+import settings from "../config/settings";
+import Stripe from 'stripe';
 
+const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret);
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
 
+const stripe = new Stripe(settings.stripe.secret_key, {
+    apiVersion: settings.stripe.api_version,
+});
+
 export default class ApplicationController {
+
+    public async paymentIntent(req: Request) {
+        try {
+            // Create a PaymentIntent with the amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+              amount: 5000, // 50 USD, amount in cents
+              currency: 'usd',
+            });
+        
+            // Send the client secret to the frontend
+            // res.json({ clientSecret: paymentIntent.client_secret });
+            const response: HttpResponse<any> = {
+                code: HttpStatus.OK.code,
+                message: 'Success',
+                result: { clientSecret: paymentIntent.client_secret }
+            };
+          
+            return Promise.resolve(response);
+        } catch (error: any) {
+            console.error('Error creating PaymentIntent:', error);
+            // res.status(500).json({ message: 'Failed to create PaymentIntent', error: error.message });
+            const response: HttpResponse<any> = {
+                code: HttpStatus.BAD_REQUEST.code,
+                message: 'Failed to create PaymentIntent'
+            };
+          
+            return Promise.resolve(response);
+        }
+
+    }
+
+    public async webhook(req: Request) {
+        let message = ''
+        try {
+            const event = await webhookService.verifyEvent(req);
+            const result = await webhookService.handleEvent(event);
+        
+            if (result.status === 'success') {
+                console.log('success')
+                message = 'success'
+                //return; //res.status(200).json({ received: true });
+            } else {
+                console.log(result.message, 'error message')
+                message = 'error message'
+                //return; //res.status(400).json({ error: result.message });
+            }
+          } catch (error: any) {
+            console.log(`Webhook Error: ${error.message}`)
+            message = 'Webhook Error'
+            //return; //res.status(400).send(`Webhook Error: ${error.message}`);
+        }
+
+        const response: HttpResponse<any> = {
+            code: message === 'success' ? HttpStatus.OK.code : HttpStatus.BAD_REQUEST.code,
+            message,
+        };
+      
+        return Promise.resolve(response);
+
+    }
 
     @TryCatch
     public async feeCalculatorV1 (req: Request) {

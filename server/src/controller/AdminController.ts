@@ -229,6 +229,33 @@ export default class AdminController {
     }
 
     @TryCatch
+    public async deleteClient(req: Request) {
+        const clientId = req.params.clientId;
+        const userId = req.user._id;
+
+        const [user, client] = await Promise.all([
+            datasources.userDAOService.findById(userId),
+            datasources.clientDAOService.findById(clientId)
+        ]);
+
+        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+        if(user && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        if(!client)
+            return Promise.reject(CustomAPIError.response("Client does not exist", HttpStatus.NOT_FOUND.code));
+
+        await datasources.clientDAOService.deleteById(client._id)
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successfully deleted client.`
+        };
+
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
     public async getAllClients(req: Request) {
 
         const userId = req.user._id;
@@ -633,6 +660,25 @@ export default class AdminController {
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: `Successfully changed status to ${value.status}.`
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async singleBlogAdmin (req: Request) {
+ 
+        const blogId = req.params.blogId;
+
+        const blog = await datasources.blogDAOService.findById(blogId);
+        if(!blog)
+            return Promise.reject(CustomAPIError.response("Blog not found", HttpStatus.NOT_FOUND.code));
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully retrieved blog.',
+            result: blog
         };
       
         return Promise.resolve(response);

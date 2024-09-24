@@ -4,6 +4,18 @@ import { Request, Response } from "express";
 
 const applicationController = new ApplicationController();
 
+export const paymentCheckoutHandler = async (req: Request, res: Response) =>  {
+    const response = await applicationController.paymentCheckout(req);
+
+    res.status(response.code).json(response);
+};
+
+export const paymentIntentHandler = async (req: Request, res: Response) =>  {
+    const response = await applicationController.paymentIntent(req);
+
+    res.status(response.code).json(response);
+};
+
 export const webhookHandler = async (req: Request, res: Response) =>  {
     const response = await applicationController.webhook(req);
 

@@ -309,7 +309,6 @@ export default class AuthenticationController {
         };
     
         return Promise.resolve(response);
-
     }
 
     @TryCatch
@@ -390,7 +389,7 @@ export default class AuthenticationController {
                 CustomAPIError.response('Account is disabled. Please contact administrator', HttpStatus.UNAUTHORIZED.code)
             );
         
-        const { accessToken, refreshToken }: TokenTypes = await Generic.generateJWT({
+        const accessToken = await Generic.generateAdmJWT({
             userId: user._id,
             userType: user.userType,
             fullName: `${user.firstName} ${user.lastName}`
@@ -399,7 +398,7 @@ export default class AuthenticationController {
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: 'Login successful.',
-            result: {accessToken, refreshToken}
+            result: { accessToken }
         };
     
         return Promise.resolve(response);

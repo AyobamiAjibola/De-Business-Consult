@@ -29,7 +29,8 @@ interface IApplication {
     documentAttached: number,
     client: mongoose.Types.ObjectId,
     successful: string[],
-    reasonForDecline: string
+    reasonForDecline: string,
+    transaction: mongoose.Types.ObjectId
 };
 
 const applicationSchema = new Schema<IApplication>({
@@ -48,7 +49,8 @@ const applicationSchema = new Schema<IApplication>({
     documentAttached: { type: Number },
     client: { type: Schema.Types.ObjectId, ref: 'Client' },
     successful: [{ type: String }],
-    reasonForDecline: { type: String, allowNull: true }
+    reasonForDecline: { type: String, allowNull: true },
+    transaction: { type: Schema.Types.ObjectId, ref: 'Transaction' },
 }, { timestamps: true });
 
 applicationSchema.pre(['findOne', 'find'], function (next) {

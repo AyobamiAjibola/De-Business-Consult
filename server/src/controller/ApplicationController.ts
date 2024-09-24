@@ -12,38 +12,104 @@ import Generic from "../utils/Generic";
 import { Request, Response } from "express";
 import StripeWebhookService from "../services/StripeWebhookService";
 import settings from "../config/settings";
-import Stripe from 'stripe';
+import stripe from "../utils/StripeConfig";
 
 const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret);
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
 
-const stripe = new Stripe(settings.stripe.secret_key, {
-    apiVersion: settings.stripe.api_version,
-});
-
 export default class ApplicationController {
 
-    public async paymentIntent(req: Request) {
-        try {
-            // Create a PaymentIntent with the amount and currency
-            const paymentIntent = await stripe.paymentIntents.create({
-              amount: 5000, // 50 USD, amount in cents
-              currency: 'usd',
-            });
+    public async paymentCheckout(req: Request) {
+        const { amount } = req.body; // Amount in dollars or currency specified
         
-            // Send the client secret to the frontend
-            // res.json({ clientSecret: paymentIntent.client_secret });
+        try {
+          // Create a Checkout Session
+          const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [
+              {
+                price_data: {
+                  currency: 'usd',
+                  product_data: {
+                    name: 'Product Name', // Replace with dynamic product name if necessary
+                  },
+                  unit_amount: amount * 100, // Amount in cents (50 USD becomes 5000 cents)
+                },
+                quantity: 1,
+              },
+            ],
+            metadata: {
+                userId: "req.user._id"
+            },
+            mode: 'payment',
+            success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.headers.origin}/cancel`,
+          });
+      
+          const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Checkout Session created successfully',
+            result: { sessionId: session.id }
+          };
+      
+          return Promise.resolve(response);
+      
+        } catch (error: any) {
+          console.error('Error creating Checkout Session:', error);
+      
+          const response: HttpResponse<any> = {
+            code: HttpStatus.BAD_REQUEST.code,
+            message: 'Failed to create Checkout Session',
+          };
+      
+          return Promise.resolve(response);
+        }
+      }
+
+    public async paymentIntent(req: Request) {
+
+        const { error, value } = Joi.object<any>({
+            amount: Joi.number().required().label("Service Amount"),
+            application: Joi.string().required().label("Application Id")
+        }).validate(req.body);
+        if (error)
+            return Promise.reject(
+              CustomAPIError.response(
+                error.details[0].message,
+                HttpStatus.BAD_REQUEST.code
+              )
+            );
+
+        const application = await datasources.applicationDAOService.findById(value.application);
+        if(!application)
+            return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code))
+        
+        const transaction = await datasources.transactionDAOService.findByAny({ application: value.application });
+        if(transaction && transaction.paid)
+            return Promise.reject(CustomAPIError.response("The application has already been paid for.", HttpStatus.BAD_REQUEST.code))
+        
+        try {
+            const paymentIntent = await stripe.paymentIntents.create({
+              amount: value.amount * 100,
+              currency: 'usd',
+              metadata: {
+                applicationId: value.application
+              }
+            });
+
             const response: HttpResponse<any> = {
                 code: HttpStatus.OK.code,
                 message: 'Success',
-                result: { clientSecret: paymentIntent.client_secret }
+                result: { 
+                    clientSecret: paymentIntent.client_secret,
+                    paymentIntentId: paymentIntent.id
+                }
             };
           
             return Promise.resolve(response);
         } catch (error: any) {
             console.error('Error creating PaymentIntent:', error);
-            // res.status(500).json({ message: 'Failed to create PaymentIntent', error: error.message });
             const response: HttpResponse<any> = {
                 code: HttpStatus.BAD_REQUEST.code,
                 message: 'Failed to create PaymentIntent'
@@ -61,18 +127,14 @@ export default class ApplicationController {
             const result = await webhookService.handleEvent(event);
         
             if (result.status === 'success') {
-                console.log('success')
                 message = 'success'
-                //return; //res.status(200).json({ received: true });
             } else {
                 console.log(result.message, 'error message')
                 message = 'error message'
-                //return; //res.status(400).json({ error: result.message });
             }
           } catch (error: any) {
             console.log(`Webhook Error: ${error.message}`)
             message = 'Webhook Error'
-            //return; //res.status(400).send(`Webhook Error: ${error.message}`);
         }
 
         const response: HttpResponse<any> = {
@@ -359,11 +421,12 @@ export default class ApplicationController {
 
     @TryCatch
     public async createApplication (req: Request) {
-        await this.doCreateApplication(req);
+        const application = await this.doCreateApplication(req);
 
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
-            message: 'Successfully submitted an application.'
+            message: 'Successfully submitted an application.',
+            result: application
         };
       
         return Promise.resolve(response);
@@ -510,7 +573,7 @@ export default class ApplicationController {
 
                 const application: any = await datasources.applicationDAOService.create(payload as IApplicationModel);
 
-                return resolve(application)
+                return resolve({applicationId: application._id} as any)
 
             })
         })

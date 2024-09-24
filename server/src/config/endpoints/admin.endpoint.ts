@@ -19,6 +19,7 @@ import {
     deleteAuthorHandler, 
     deleteBlogCategoryHandler, 
     deleteBlogHandler, 
+    deleteClientHandler, 
     deleteNewsletterHandler, 
     deleteServiceHandler, 
     deleteSubscriberHandler, 
@@ -41,6 +42,7 @@ import {
     getSingleSubscriberHandler, 
     getSingleTestimonialHandler, 
     likeBlogHandler, 
+    singleBlogAdminHandler, 
     singleBlogHandler, 
     toggleClientStatusHandler, 
     updateAuthorHandler, 
@@ -185,6 +187,12 @@ const adminEndpoints: RouteEndpoint  = [
         method: 'get',
         path: '/get-single-blog/:blogId',
         handler: singleBlogHandler
+    },
+    {
+        name: 'get-single-blog-admin',
+        method: 'get',
+        path: '/get-single-blog-admin/:blogId',
+        handler: singleBlogAdminHandler
     },
     {
         name: 'get-single-author',
@@ -335,6 +343,12 @@ const adminEndpoints: RouteEndpoint  = [
         method: 'delete',
         path: '/delete-testimonial/:testimonialId',
         handler: deleteTestimonialHandler
+    },
+    {
+        name: 'delete client',
+        method: 'delete',
+        path: '/delete-client/:clientId',
+        handler: deleteClientHandler
     },
     {
         name: 'get client',

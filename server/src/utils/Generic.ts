@@ -390,6 +390,19 @@ export default class Generic {
     }
   }
 
+  public static async generateAdmJWT(payload: CustomJwtPayload) {
+    try {
+      // Create the access token
+      const accessToken = sign(payload, <string>settings.jwtAccessToken.key);
+
+      return accessToken;
+    } catch (err: any) {
+      return Promise.reject(
+        CustomAPIError.response(err, HttpStatus.BAD_REQUEST.code)
+      );
+    }
+  }
+
   public static async generateJWT(payload: CustomJwtPayload) {
     try {
       // Create the access token

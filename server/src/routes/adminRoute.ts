@@ -19,6 +19,11 @@ export const fetchServicesHandler = async (req: Request, res: Response) =>  {
     res.status(response.code).json(response);
 };
 
+export const deleteClientHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.deleteClient(req);
+    res.status(response.code).json(response);
+});
+
 export const getSingleServiceHandler = async (req: Request, res: Response) =>  {
     const response = await adminController.getSingleService(req);
     res.status(response.code).json(response);
@@ -113,6 +118,11 @@ export const singleBlogHandler = async (req: Request, res: Response) =>  {
     const response = await adminController.singleBlog(req);
     res.status(response.code).json(response);
 };
+
+export const singleBlogAdminHandler = authenticateRouteWrapper( async (req, res) =>  {
+    const response = await adminController.singleBlogAdmin(req);
+    res.status(response.code).json(response);
+});
 
 export const getSingleAuthorHandler = async (req: Request, res: Response) =>  {
     const response = await adminController.getSingleAuthor(req);

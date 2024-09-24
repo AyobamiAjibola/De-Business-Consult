@@ -1,52 +1,57 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export enum PaymentStatus {
+    NotPaid = 'not_paid',
+    PaymentSuccessful = 'payment_successful',
+    PaymentCanceled = 'payment_canceled',
+    PaymentFailed = 'payment_failed',
+    PaymentInProgress = 'payment_in_progress'
+}
+
 interface ITransactions {
-    reference: string,
+    paymentIntentId: string,
+    chargeId: string,
     amount: number,
-    status: string,
-    type: string,
-    serviceStatus: string | null,
-    authorizationUrl: string | null,
+    status: PaymentStatus,
+    object: string,
     last4: string | null,
     expMonth: string | null,
     expYear: string | null,
     channel: string | null,
-    cardType: string | null,
-    bank: string | null,
-    countryCode: string,
     brand: string | null,
+    receiptUrl: string | null,
     currency: string,
-    paidAt: Date,
-    client: mongoose.Types.ObjectId;
+    paymentIntentDate: number | null,
+    paidAt: number | null,
+    paid: boolean,
     application: mongoose.Types.ObjectId;
 };
 
 const transactionSchema = new Schema<ITransactions>({
-    reference: { type: String },
+    paymentIntentId: { type: String },
+    chargeId: { type: String, allowNull: true },
     amount: { type: Number },
-    status: { type: String },
-    type: { type: String },
-    serviceStatus: { type: String, allowNull: true },
-    authorizationUrl: { type: String, allowNull: true },
+    status: {
+        type: String,
+        enum: Object.values(PaymentStatus),
+        default: PaymentStatus.NotPaid
+    },
+    object: { type: String, allowNull: true },
     last4: { type: String, allowNull: true },
     expMonth: { type: String, allowNull: true },
     expYear: { type: String, allowNull: true },
     channel: { type: String, allowNull: true },
-    cardType: { type: String, allowNull: true },
-    bank: { type: String, allowNull: true },
-    countryCode: { type: String },
     brand: { type: String, allowNull: true },
+    receiptUrl: { type: String, allowNull: true },
     currency: { type: String },
-    paidAt: { type: Date },
-    client: { type: Schema.Types.ObjectId, allowNull: true, ref: 'Client' },
-    application: { type: Schema.Types.ObjectId, ref: 'Aplication' }
+    paymentIntentDate: { type: Number, allowNull: true },
+    paidAt: { type: Number, allowNull: true },
+    paid: { type: Boolean, default: false },
+    application: { type: Schema.Types.ObjectId, ref: 'Application' }
 });
 
 transactionSchema.pre(['findOne', 'find'], function (next) {
-    this.populate({
-        path: 'client',
-        select: 'firstName lastName'
-      });
+    this.populate('application');
     next();
 });
 

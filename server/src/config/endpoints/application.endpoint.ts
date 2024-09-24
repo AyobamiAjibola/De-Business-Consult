@@ -7,10 +7,24 @@ import {
     feeCalculatorV1Handler, 
     fetchAllApplicationsHandler, 
     fetchClientApplicationsHandler, 
+    paymentCheckoutHandler, 
+    paymentIntentHandler, 
     uploadSuccessfulDocsHandler
 } from '../../routes/applicationRoute';
 
 const applicationEndpoints: RouteEndpoint  = [
+    {
+        name: 'payment checkout',
+        method: 'post',
+        path: '/payment-checkout',
+        handler: paymentCheckoutHandler
+    },
+    {
+        name: 'payment intent',
+        method: 'post',
+        path: '/payment-intent',
+        handler: paymentIntentHandler
+    },
     {
         name: 'fee calculator V1',
         method: 'post',

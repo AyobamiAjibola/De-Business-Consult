@@ -147,6 +147,69 @@ export default class ApplicationController {
     }
 
     @TryCatch
+    public async fetchTransactions (req: Request) {
+        const userId = req.user._id;
+
+        const [user, transactions] = await Promise.all([
+            datasources.userDAOService.findById(userId),
+            datasources.transactionDAOService.findAll({})
+        ]);
+
+        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+        if(user && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: "Successful",
+            results: transactions
+        };
+      
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async getSingleTransaction (req: Request) {
+        const transactionId = req.params.transactionId;
+
+        const [transaction] = await Promise.all([
+            datasources.transactionDAOService.findById(transactionId)
+        ]);
+
+        if(!transaction)
+            return Promise.reject(CustomAPIError.response("Transaction does not exist.", HttpStatus.NOT_FOUND.code))
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: "Successful",
+            result: transaction
+        };
+      
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async deleteTransaction (req: Request) {
+        const transactionId = req.params.transactionId;
+
+        const [transaction] = await Promise.all([
+            datasources.transactionDAOService.findById(transactionId)
+        ]);
+
+        if(!transaction)
+            return Promise.reject(CustomAPIError.response("Transaction does not exist.", HttpStatus.NOT_FOUND.code))
+
+        await datasources.transactionDAOService.deleteById(transaction._id)
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: "Successfully deleted."
+        };
+      
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
     public async feeCalculatorV1 (req: Request) {
         const { error, value } = Joi.object<any>({
             services: Joi.array()

@@ -3,10 +3,13 @@ import RouteEndpoint = appCommonTypes.RouteEndpoints;
 import { 
     changeApplicationsStatusHandler,
     createApplicationHandler,
+    deleteTransactionHandler,
     downloadApplicationDocsHandler,
     feeCalculatorV1Handler, 
     fetchAllApplicationsHandler, 
     fetchClientApplicationsHandler, 
+    fetchTransactionsHandler, 
+    getSingleTransactionHandler, 
     paymentCheckoutHandler, 
     paymentIntentHandler, 
     uploadSuccessfulDocsHandler
@@ -30,6 +33,24 @@ const applicationEndpoints: RouteEndpoint  = [
         method: 'post',
         path: '/fee-calculator-v1',
         handler: feeCalculatorV1Handler
+    },
+    {
+        name: 'fetch transactions',
+        method: 'get',
+        path: '/fetch-transactions',
+        handler: fetchTransactionsHandler
+    },
+    {
+        name: 'get single transaction',
+        method: 'get',
+        path: '/get-single-transaction/:transactionId',
+        handler: getSingleTransactionHandler
+    },
+    {
+        name: 'delete transaction',
+        method: 'delete',
+        path: '/delete-transaction/:transactionId',
+        handler: deleteTransactionHandler
     },
     {
         name: 'fetch client applications',

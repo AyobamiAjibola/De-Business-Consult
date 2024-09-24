@@ -28,6 +28,24 @@ export const feeCalculatorV1Handler = async (req: Request, res: Response) =>  {
     res.status(response.code).json(response);
 };
 
+export const fetchTransactionsHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await applicationController.fetchTransactions(req);
+
+    res.status(response.code).json(response);
+});
+
+export const getSingleTransactionHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await applicationController.getSingleTransaction(req);
+
+    res.status(response.code).json(response);
+});
+
+export const deleteTransactionHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await applicationController.deleteTransaction(req);
+
+    res.status(response.code).json(response);
+});
+
 export const fetchClientApplicationsHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await applicationController.fetchClientApplications(req);
 

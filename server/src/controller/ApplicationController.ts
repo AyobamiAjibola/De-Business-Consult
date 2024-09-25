@@ -556,8 +556,7 @@ export default class ApplicationController {
                                 docs: Joi.array().items(Joi.any().label('Documents')).required().label('Documents'),
                                 additionalInformation: Joi.string().optional().allow('').label('Additional Information')
                             })
-                        ).label('Services'),
-                    paymentType: Joi.string().label('Payment Type')
+                        ).label('Services')
                 }).validate(serviceBody);
                 if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 

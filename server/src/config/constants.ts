@@ -66,6 +66,7 @@ import QueueEvents = appCommonTypes.QueueEvents;
 
   export const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'video/mp4', 'video/mkv', 'video/flv', 'video/webm'];
   export const MAX_SIZE_IN_BYTE_MEDIA = 200 * 1024 * 1024; // 200MB
+  export const IMAGE_SIZE = 900000 //900 kb
 
   export const MAX_SIZE_IN_BYTE_VID = 200 * 1024 * 1024; // 200MB
   export const ALLOWED_FILE_TYPES_VID = ['video/mp4', 'video/mkv', 'video/flv', 'video/webm'];

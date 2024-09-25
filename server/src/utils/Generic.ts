@@ -14,9 +14,9 @@ import HttpStatus from '../helpers/HttpStatus';
 import { NextFunction, Request } from 'express';
 import UserToken from '../models/UserToken';
 import * as Jimp from 'jimp';
-import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, HASHTAGS, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
+import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, HASHTAGS, IMAGE_SIZE, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
 import { UserType } from "../models/User";
-import datasources from '../services/dao';
+import { resolve } from "path";
 
 interface IGetImagePath {
   basePath: string;
@@ -194,12 +194,34 @@ export default class Generic {
     return result;
   }
 
+  public static async removeImage(image: any, pathToRemoveFrm: string) {
+    try {
+      const imageArr = Array.isArray(image) ? image : image.split(',')
+      const img = await fs.readdir(resolve(__dirname, `../../${pathToRemoveFrm}`));
+
+      await Promise.all(
+        img.map(async (value) => {
+          for (const item of imageArr) {
+            if (item.includes(value)) {
+              await fs.unlink(resolve(__dirname, `../../${pathToRemoveFrm}/${value}`));
+            }
+          }
+        })
+      );
+    } catch (error) {
+      console.error("Error removing image:", error);
+    }
+  }
+
   public static async handleImage(image: any, basePath: string): Promise<{ result?: string, error?: string }> {
     try {
         if (!image) return { result: '' };
         const allowedFileTypes = ALLOWED_FILE_TYPES;
         if (!allowedFileTypes.includes(image.mimetype as string)) {
-            throw new CustomAPIError(MESSAGES.image_type_error, HttpStatus.BAD_REQUEST.code);
+          throw new CustomAPIError(MESSAGES.image_type_error, HttpStatus.BAD_REQUEST.code);
+        }
+        if(image.size > IMAGE_SIZE) {
+          throw new CustomAPIError(MESSAGES.image_size_error, HttpStatus.BAD_REQUEST.code);
         }
         const outputPath = await Generic.compressImage(image.filepath, basePath);
         const imagePath = await Generic.getImagePath({

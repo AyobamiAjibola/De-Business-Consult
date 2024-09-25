@@ -4,12 +4,14 @@ interface IServices {
     name: string;
     cost: number;
     description: string;
+    image: string;
 };
 
 const clientSchema = new Schema<IServices>({
     name: { type: String },
     cost: { type: Number },
-    description: { type: String }
+    description: { type: String },
+    image: { type: String }
 }, { timestamps: true });
   
 export interface IServicesModel extends Document, IServices {};

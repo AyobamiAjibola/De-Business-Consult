@@ -35,79 +35,28 @@ const sendMailService = new SendMailService();
 export default class AdminController {
 
     @TryCatch
-    public async createService(req: Request) {
-
-        const { error, value } = Joi.object<IServicesModel>({
-            name: Joi.string().required().label('Service name'),
-            cost: Joi.string().required().label('Cost'),
-            description: Joi.string().required().label('Description'),
-        }).validate(req.body);
-        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
-
-        const [service] = await Promise.all([
-            datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() })
-        ]);
-
-        if(service)
-            return Promise.reject(CustomAPIError.response('Service name already exist.', HttpStatus.NOT_FOUND.code));
-
-        const payload = {
-            ...value,
-            name: value.name.toLowerCase()
-        }
-
-        await datasources.servicesDAOService.create(payload as IServicesModel);
-
-        const response: HttpResponse<any> = {
-            code: HttpStatus.CREATED.code,
-            message: `Successfully created.`
-        };
-
-        return Promise.resolve(response);
-
-    }
-
-    @TryCatch
-    public async updateService(req: Request) {
-        const serviceId = req.params.serviceId;
-
-        const { error, value } = Joi.object<IServicesModel>({
-            name: Joi.string().label('Service name'),
-            cost: Joi.string().label('Cost'),
-            description: Joi.string().label('Description'),
-        }).validate(req.body);
-        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
-
-        const [service] = await Promise.all([
-            datasources.servicesDAOService.findById(serviceId)
-        ]);
-        
-        if(!service)
-            return Promise.reject(CustomAPIError.response('Service does not exist.', HttpStatus.NOT_FOUND.code));
-
-        if (value.name.toLowerCase() && value.name.toLowerCase() !== service.name) {
-            const existingService = await datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() });
-            if (existingService) {
-                return Promise.reject(CustomAPIError.response("A service with this name already exists.", HttpStatus.CONFLICT.code));
-            }
-        }
-
-        const payload = {
-            name: value.name ? value.name.toLowerCase() : service.name,
-            cost: value.cost ? value.cost : service.cost,
-            description: value.description ? value.description : service.description
-        }
-
-        await datasources.servicesDAOService.updateByAny({_id: service._id}, payload as IServicesModel);
+    public async createService (req: Request) {
+        await this.doCreateService(req);
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
-            message: `Successfully updated.`
+            message: 'Successfully created.'
         };
-
+      
         return Promise.resolve(response);
+    };
 
-    }
+    @TryCatch
+    public async updateService (req: Request) {
+        await this.doUpdateService(req);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully updated.'
+        };
+      
+        return Promise.resolve(response);
+    };
 
     @TryCatch
     public async fetchServices(req: Request) {
@@ -1581,6 +1530,106 @@ export default class AdminController {
         })
     }
 
+    private async doCreateService(req: Request): Promise<HttpResponse<IServicesModel>> {
+        return new Promise((resolve, reject) => {
+           
+            form.parse(req, async (err, fields, files) => {
+
+                const { error, value } = Joi.object<IServicesModel>({
+                    name: Joi.string().required().label('Service name'),
+                    cost: Joi.string().required().label('Cost'),
+                    description: Joi.string().required().label('Description'),
+                    image: Joi.any().label('Service image')
+                }).validate(fields);
+                if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+        
+                const [service] = await Promise.all([
+                    datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() })
+                ]);
+        
+                if(service)
+                    return reject(CustomAPIError.response('Service name already exist.', HttpStatus.NOT_FOUND.code));
+
+                const basePath = `${UPLOAD_BASE_PATH}/photo`;
+                const [{ result: serviceImage, error: imageError }] = await Promise.all([
+                    Generic.handleImage(files.image as File, basePath)
+                ]);
+            
+                if (imageError) {
+                    return reject(CustomAPIError.response(imageError as string, HttpStatus.BAD_REQUEST.code));
+                }
+        
+                const payload = {
+                    ...value,
+                    name: value.name.toLowerCase(),
+                    image: serviceImage ? serviceImage : ''
+                }
+        
+                await datasources.servicesDAOService.create(payload as IServicesModel);
+
+                return resolve('service' as any)
+
+            })
+        })
+    }
+
+    private async doUpdateService(req: Request): Promise<HttpResponse<IServicesModel>> {
+        return new Promise((resolve, reject) => {
+           
+            form.parse(req, async (err, fields, files) => {
+                const serviceId = req.params.serviceId;
+
+                const { error, value } = Joi.object<IServicesModel>({
+                    name: Joi.string().optional().allow('').label('Service name'),
+                    cost: Joi.string().optional().allow('').label('Cost'),
+                    description: Joi.string().optional().allow('').label('Description'),
+                    image: Joi.any().label('Service image')
+                }).validate(fields);
+                if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+        
+                const [service] = await Promise.all([
+                    datasources.servicesDAOService.findById(serviceId)
+                ]);
+
+                if(!service)
+                    return reject(CustomAPIError.response('Service does not exist.', HttpStatus.NOT_FOUND.code));
+        
+                if (value.name.toLowerCase() && value.name.toLowerCase() !== service.name) {
+                    const existingService = await datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() });
+                    if (existingService) {
+                        return reject(CustomAPIError.response("A service with this name already exists.", HttpStatus.CONFLICT.code));
+                    }
+                }
+
+                const basePath = `${UPLOAD_BASE_PATH}/photo`;
+                const [{ result: serviceImage, error: imageError }] = await Promise.all([
+                    Generic.handleImage(files.image as File, basePath)
+                ]);
+            
+                if (imageError) {
+                    return reject(CustomAPIError.response(imageError as string, HttpStatus.BAD_REQUEST.code));
+                }
+
+                //remove the image from directory
+                if(serviceImage && service.image) {
+                    await Generic.removeImage(service.image, basePath)
+                }
+        
+                const payload = {
+                    name: value.name ? value.name.toLowerCase() : service.name,
+                    cost: value.cost ? value.cost : service.cost,
+                    description: value.description ? value.description : service.description,
+                    image: serviceImage ? serviceImage : service.image
+                }
+        
+                await datasources.servicesDAOService.update({_id: service._id}, payload);
+
+                return resolve('service' as any)
+
+            })
+        })
+    }
+
     private async doCreateBlog(req: Request): Promise<HttpResponse<IBlogModel>> {
         return new Promise((resolve, reject) => {
            
@@ -1674,18 +1723,18 @@ export default class AdminController {
                 const blogId = req.params.blogId;
 
                 const { error, value } = Joi.object<any>({
-                    title: Joi.string().label('Title'),
-                    urlSlug: Joi.string().label('Url slug'),
-                    content: Joi.string().label('Blog body'),
-                    category: Joi.string().label('Blog category'),
+                    title: Joi.string().optional().allow('').label('Title'),
+                    urlSlug: Joi.string().optional().allow('').label('Url slug'),
+                    content: Joi.string().optional().allow('').label('Blog body'),
+                    category: Joi.string().optional().allow('').label('Blog category'),
                     titleImage: Joi.any().label('Title image'),
                     bodyImages: Joi.array().items(Joi.string()).label("images"),
-                    author: Joi.string().label('Author'),
-                    status: Joi.string().label('status')
+                    author: Joi.string().optional().allow('').label('Author'),
+                    status: Joi.string().optional().allow('').label('status')
                 }).validate(fields);
                 if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
-                if(!blogStatus.includes(value.status)) 
+                if(value.status && !blogStatus.includes(value.status)) 
                     return reject(CustomAPIError.response(`Blog status provided is invalid.`, HttpStatus.NOT_FOUND.code))
 
                 const [user, category, blogExist, author, blog] = await Promise.all([
@@ -1706,14 +1755,14 @@ export default class AdminController {
                     }
                 }
 
-                if(!author)
+                if(value.author && !author)
                     return reject(CustomAPIError.response(`Author does not exist.`, HttpStatus.FORBIDDEN.code))
 
                 const isAllowed = await Generic.handleAllowedUser(user && user.userType)
                 if(user && !isAllowed)
                     return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
-                if(!category)
+                if(value.category && !category)
                     return reject(CustomAPIError.response("Category does not exist.", HttpStatus.NOT_FOUND.code));
 
                 const basePathBodyImage = `${UPLOAD_BASE_PATH}/blogbodyimg`;
@@ -1741,6 +1790,11 @@ export default class AdminController {
             
                 if (imageError) {
                     return reject(CustomAPIError.response(imageError as string, HttpStatus.BAD_REQUEST.code));
+                }
+
+                 //remove the image from directory
+                if(_titleImage && blog.titleImage) {
+                    await Generic.removeImage(blog.titleImage, basePathTitleImage)
                 }
 
                 const payload: Partial<IBlogModel> = {

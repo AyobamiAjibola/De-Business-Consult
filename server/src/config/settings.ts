@@ -92,7 +92,7 @@ const settings: AppSettings = {
     apiRoot: <string>process.env.ROOT_API,
   },
   rabbitMq: {
-    connection: ''
+    connection: <string>process.env.AMQP_CONNECT,
   },
   googleOAuth: {
     google_client_id: '',

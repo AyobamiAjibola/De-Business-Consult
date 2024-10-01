@@ -8,6 +8,11 @@ export enum PaymentStatus {
     PaymentInProgress = 'payment_in_progress'
 }
 
+export enum PaymentType {
+    Application = 'application',
+    Appointment = 'appointment'
+}
+
 interface ITransactions {
     paymentIntentId: string,
     chargeId: string,
@@ -24,7 +29,9 @@ interface ITransactions {
     paymentIntentDate: number | null,
     paidAt: number | null,
     paid: boolean,
-    application: mongoose.Types.ObjectId;
+    application: mongoose.Types.ObjectId | null;
+    appointment: mongoose.Types.ObjectId | null;
+    paymentType: PaymentType
 };
 
 const transactionSchema = new Schema<ITransactions>({
@@ -47,11 +54,23 @@ const transactionSchema = new Schema<ITransactions>({
     paymentIntentDate: { type: Number, allowNull: true },
     paidAt: { type: Number, allowNull: true },
     paid: { type: Boolean, default: false },
-    application: { type: Schema.Types.ObjectId, ref: 'Application' }
+    application: { type: Schema.Types.ObjectId, allowNull: true, ref: 'Application' },
+    appointment: { type: Schema.Types.ObjectId, allowNull: true, ref: 'Appointment' },
+    paymentType: {
+        type: String,
+        enum: Object.values(PaymentType)
+    },
 });
 
 transactionSchema.pre(['findOne', 'find'], function (next) {
-    this.populate('application');
+    this.populate({
+        path: 'application',
+        select: 'client applicationId status'
+    })
+    .populate({
+        path: 'appointment',
+        select: 'client status'
+    });
     next();
 });
 

@@ -8,19 +8,17 @@ import CustomAPIError from "../exceptions/CustomAPIError";
 import HttpStatus from "../helpers/HttpStatus";
 import datasources from '../services/dao';
 import settings from "../config/settings";
-import SendMailService from "../services/SendMailService";
 import { verify } from 'jsonwebtoken';
 import UserToken from "../models/UserToken";
 import { IUserModel, UserType } from "../models/User";
 import Generic from "../utils/Generic";
 import { ISignUpAtemptModel } from "../models/SignUpAtempt";
 import signup_template from "../resources/template/email/signup";
-import moment = require("moment");
+import moment from "moment";
 import { ClientStatus, IClientModel } from "../models/Client";
 import formidable, { File } from 'formidable';
 import { UPLOAD_BASE_PATH } from "../config/constants";
-
-const sendMailService = new SendMailService();
+import QueueManager from "../services/QueueManager";
 
 interface TokenTypes {
     accessToken: string, 
@@ -134,6 +132,21 @@ export default class AuthenticationController {
     }
 
     @TryCatch
+    public async getSingleUser(req: Request) {
+        const userId = req.user._id;
+        const user = await datasources.userDAOService.findById(userId);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successful.`,
+            result: user
+        };
+
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     public async preSignUp(req: Request) {
         const { error, value } = Joi.object<ISignUpAtemptModel>({
             firstName: Joi.string().required().label('First Name'),
@@ -174,13 +187,15 @@ export default class AuthenticationController {
             link
         });
 
-        await sendMailService.sendMail({
+        const emailPayload = {
             to: value.email,
             replyTo: process.env.SMTP_EMAIL_FROM,
             from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
             subject: `De Business Consult.`,
             html: mail
-        });
+        }
+
+        await QueueManager.dispatch({data: emailPayload});
 
         const re: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -428,13 +443,15 @@ export default class AuthenticationController {
             link: resetLink
         });
 
-        await sendMailService.sendMail({
+        const emailPayload = {
             to: value.email,
             replyTo: process.env.SMTP_EMAIL_FROM,
             from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
             subject: `De Business Consult.`,
             html: mail
-        });
+        };
+
+        await QueueManager.dispatch({data: emailPayload});
 
         await datasources.clientDAOService.updateByAny({
             _id: client._id
@@ -472,13 +489,14 @@ export default class AuthenticationController {
             link: resetLink
         });
 
-        await sendMailService.sendMail({
+        const emailPayload = {
             to: value.email,
             replyTo: process.env.SMTP_EMAIL_FROM,
             from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
             subject: `De Business Consult.`,
             html: mail
-        });
+        };
+        await QueueManager.dispatch({data: emailPayload});
 
         await datasources.userDAOService.updateByAny({
             _id: user._id

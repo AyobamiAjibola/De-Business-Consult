@@ -10,8 +10,8 @@ import {
     fetchClientApplicationsHandler, 
     fetchTransactionsHandler, 
     getSingleTransactionHandler, 
-    paymentCheckoutHandler, 
-    paymentIntentHandler, 
+    paymentCheckoutHandler,
+    paymentIntentHandler,
     uploadSuccessfulDocsHandler
 } from '../../routes/applicationRoute';
 

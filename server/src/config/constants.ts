@@ -38,9 +38,14 @@ import QueueEvents = appCommonTypes.QueueEvents;
     error: 'red',
   };
 
-  export const QUEUE_EVENTS: QueueEvents = {
-    name: 'DEFAULT',
+  export const QUEUE_EVENTS_EMAIL: QueueEvents = {
+    name: 'DE-EMAIL'
   };
+
+  export const QUEUE_EVENTS_PAYMENT: QueueEvents = {
+    name: 'DE-PAYMENT'
+  };
+
 
   export const AGENDA_COLLECTION_NAME = 'cron_jobs';
   export const AGENDA_SCHEDULE_NAME = 'scheduled_jobs';

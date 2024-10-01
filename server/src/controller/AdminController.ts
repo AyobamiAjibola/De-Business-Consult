@@ -18,19 +18,18 @@ import { BlogStatus, IBlogModel } from "../models/Blog";
 import Author from "../models/Author";
 import { IBlogCommentsModel } from "../models/BlogComments";
 import { INewsLetterModel, NewsLetterStatus } from "../models/NewsLetter";
-import SendMailService from "../services/SendMailService";
 import mail_template from "../resources/template/email/newsletter";
 import DeBizDocs, { IDeBizDocsModel } from "../models/DeBizDocs";
 import { ISubscriberModel, SubscriberStatus } from "../models/Subscriber";
 import { ITestimonialModel } from "../models/Testimonial";
 import contact_us_template from "../resources/template/email/contactUs";
+import QueueManager from "../services/QueueManager";
 
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
 const blogStatus = [BlogStatus.Archived, BlogStatus.Draft, BlogStatus.Published];
 const newsLetterStatus = [NewsLetterStatus.Draft, NewsLetterStatus.Scheduled, NewsLetterStatus.Sent];
 const subscriberStatus = [SubscriberStatus.Active, SubscriberStatus.Inactive]
-const sendMailService = new SendMailService();
 
 export default class AdminController {
 
@@ -914,13 +913,14 @@ export default class AdminController {
             phone: value.phone
         });
 
-        await sendMailService.sendMail({
+        const emailPayload = {
             to: process.env.SMTP_EMAIL_FROM,
             replyTo: process.env.SMTP_EMAIL_FROM,
             from: `${value.firstName} ${value.lastName} <${value.email}>`,
             subject: `Contact us email.`,
             html: mail
-        });
+        };
+        await QueueManager.dispatch({data: emailPayload});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -1267,7 +1267,7 @@ export default class AdminController {
                 currentDate.setHours(0, 0, 0, 0);
 
                 if (selectedDate < currentDate) {
-                    return Promise.reject(
+                    return reject(
                         CustomAPIError.response(
                             "Scheduled date can not be less than the current date or time.",
                             HttpStatus.FORBIDDEN.code
@@ -1319,13 +1319,14 @@ export default class AdminController {
                 });
 
                 if(value.status === NewsLetterStatus.Sent && subscribedUsers.length > 0) {
-                    await sendMailService.sendMail({
+                    const emailPayload = {
                         to: subscribedUsers,
                         replyTo: process.env.SMTP_EMAIL_FROM,
                         from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
                         subject: `De Business Consult News Letter.`,
                         html: mail
-                    });
+                    };
+                    await QueueManager.dispatch({data: emailPayload});
                 }
 
                 return resolve('news letter' as any)
@@ -1422,13 +1423,14 @@ export default class AdminController {
                 });
 
                 if(value.status === NewsLetterStatus.Sent && subscribedUsers.length > 0) {
-                    await sendMailService.sendMail({
+                    const emailPayload = {
                         to: subscribedUsers,
                         replyTo: process.env.SMTP_EMAIL_FROM,
                         from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
                         subject: `De Business Consult News Letter.`,
                         html: mail
-                    });
+                    };
+                    await QueueManager.dispatch({data: emailPayload});
                 }
 
                 return resolve('news letter' as any)

@@ -1,6 +1,6 @@
 import database from '../config/database';
 import CommandLineRunner from '../helpers/CommandLineRunner';
-import { AGENDA_COLLECTION_NAME, AGENDA_SCHEDULE_NAME } from '../config/constants';
+import { AGENDA_COLLECTION_NAME, AGENDA_SCHEDULE_NAME, QUEUE_EVENTS_EMAIL } from '../config/constants';
 import CronJob from '../helpers/CronJob';
 import { Agenda } from 'agenda';
 import AppLogger from '../utils/AppLogger';
@@ -8,6 +8,9 @@ import { AppAgenda } from "agenda-schedule-wrapper";
 import { BOOK_APPOINTMENT } from "../config/constants";
 import moment from "moment";
 import agendaManager from '../services/AgendaManager';
+// import { QueueManager } from "rabbitmq-email-manager";
+import queue from '../config/queue';
+import QueueManager from '../services/QueueManager';
 
 const logger = AppLogger.init('mongoDb').logger;
 
@@ -24,10 +27,11 @@ export default async function startup() {
   //   // processEvery: '30 seconds'
   // });
 
-  // await QueueManager.init({
-  //   queueClient: queue.client,
-  //   queue: QUEUE_EVENTS.name,
-  // });
+  await QueueManager.init({
+    queueClient: queue.client,
+    queue: QUEUE_EVENTS_EMAIL.name
+  });
+  await QueueManager.consume()
 
   AppAgenda.init({
     db: mongodb,

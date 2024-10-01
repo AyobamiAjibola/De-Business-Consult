@@ -10,6 +10,7 @@ import {
     createUserHandler, 
     fetchUsersHandler, 
     getAccessTokenHandler, 
+    getSingleUsersHandler, 
     loggingHandler, 
     notificationSettingsHandler, 
     preSignUpHandler, 
@@ -41,6 +42,12 @@ const authEndpoints: RouteEndpoint  = [
         method: 'get',
         path: '/fetch-users',
         handler: fetchUsersHandler
+    },
+    {
+        name: 'get single user',
+        method: 'get',
+        path: '/get-single-user',
+        handler: getSingleUsersHandler
     },
     {
         name: 'get access token',

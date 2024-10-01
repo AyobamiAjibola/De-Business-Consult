@@ -6,11 +6,8 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import settings from "./config/settings";
 import globalExceptionHandler from "./middleware/globalExceptionHandler";
-import router from "./routes";
+import router from "./routes/index";
 import { webhookHandler } from "./routes/applicationRoute";
-import StripeWebhookService from "./services/StripeWebhookService";
-
-const webhookService = new StripeWebhookService(settings.stripe.secret_key);
 
 const app = express();
 export const corsOptions = {

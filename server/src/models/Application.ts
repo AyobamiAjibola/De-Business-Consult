@@ -23,7 +23,6 @@ interface IFiles {
 interface IApplication {
     services: IFiles[],
     fee: string,
-    paymentType: PaymentType,
     status: ApplicationStatus,
     applicationId: string,
     documentAttached: number,
@@ -40,7 +39,6 @@ const applicationSchema = new Schema<IApplication>({
         additionalInformation: { type: String }
     }],
     fee: { type: String },
-    paymentType: { type: String },
     status: {
         type: String,
         enum: Object.values(ApplicationStatus)
@@ -58,7 +56,7 @@ applicationSchema.pre(['findOne', 'find'], function (next) {
     .populate({
         path: 'client',
         select: 'firstName lastName email phone image companyName'
-    });
+    })
     next();
 })
   

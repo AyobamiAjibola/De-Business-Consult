@@ -14,8 +14,10 @@ interface IAppointment {
     status: AppointmentStatus,
     appointmentId: string,
     additionalInfo: string,
-    client: mongoose.Types.ObjectId,
-    reasonForCanceling: string
+    client: mongoose.Types.ObjectId | null,
+    reasonForCanceling: string,
+    transaction: mongoose.Types.ObjectId,
+    email: string | null
 };
 
 const appointmentSchema = new Schema<IAppointment>({
@@ -26,18 +28,20 @@ const appointmentSchema = new Schema<IAppointment>({
         type: String,
         enum: Object.values(AppointmentStatus)
     },
-    appointmentId: { type: String },
+    appointmentId: { type: String, unique: true },
     additionalInfo: { type: String },
-    client: { type: Schema.Types.ObjectId, ref: 'Client' },
-    reasonForCanceling: { type: String, allowNull: true }
+    client: { type: Schema.Types.ObjectId, allowNull: true, ref: 'Client' },
+    reasonForCanceling: { type: String, allowNull: true },
+    transaction: { type: Schema.Types.ObjectId, ref: 'Transaction' },
+    email: { type: String, allowNull: true }
 }, { timestamps: true });
 
 appointmentSchema.pre(['findOne', 'find'], function (next) {
     this.populate('services')
-    .populate({
-        path: 'client',
-        select: 'firstName lastName email phone image companyName'
-    });
+        .populate({
+            path: 'client',
+            select: 'firstName lastName email phone image companyName'
+        });
     next();
 })
   

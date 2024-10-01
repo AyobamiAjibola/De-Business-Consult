@@ -8,19 +8,20 @@ import datasources from '../services/dao';
 import { Request } from "express";
 import { AppointmentStatus, IAppointmentModel } from "../models/Appointment";
 import Generic from "../utils/Generic";
-import moment = require("moment");
+import moment from "moment";
 
 export default class AppointmentController {
 
     @TryCatch
     public async createAppointment (req: Request) {
-        const clientId = req.user._id;
         const { error, value } = Joi.object<any>({
             services: Joi.array()
                 .items(Joi.string()).required().label("Services"),
             date: Joi.date().required().label('Appointment date'),
             time: Joi.date().required().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
+            clientId: Joi.string().optional().allow("").label('Client id'),
+            email: Joi.string().optional().allow("").label("Client email")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -30,14 +31,23 @@ export default class AppointmentController {
               )
             );
 
-        const client = await datasources.clientDAOService.findById(clientId);
-        if(!client)
-            return Promise.reject(CustomAPIError.response("Client not found", HttpStatus.NOT_FOUND.code));
+        let client;
+        let appointment;
+        if(value.clientId) {
+            client = await datasources.clientDAOService.findById(value.clientId);
+            if(!client)
+                return Promise.reject(CustomAPIError.response("Client not found", HttpStatus.NOT_FOUND.code));
 
-        const appointment = await datasources.appointmentDAOService.findByAny({
-            client: client._id,
-            status: AppointmentStatus.Confirmed
-        });
+            appointment = await datasources.appointmentDAOService.findByAny({
+                client: value.client ? client?._id : null,
+                status: AppointmentStatus.Confirmed
+            });
+        } else {
+            appointment = await datasources.appointmentDAOService.findByAny({
+                email: value.email,
+                status: AppointmentStatus.Confirmed
+            });
+        }
 
         const newAppointmentTime = new Date(value.time).getHours();
         const newAppointmentDate = moment(value.date).format('DD/MM/YY')
@@ -78,7 +88,8 @@ export default class AppointmentController {
             services: value.services,
             appointmentId: `#${id}`,
             additionalInfo: value.additionalInfo,
-            client: client._id
+            client: client ? client._id : null,
+            email: value.email ? value.email : null,
         }
 
         await datasources.appointmentDAOService.create(payload as IAppointmentModel)
@@ -100,6 +111,7 @@ export default class AppointmentController {
             date: Joi.date().optional().label('Appointment date'),
             time: Joi.date().optional().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
+            email: Joi.string().optional().allow("").label("Client email")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -136,7 +148,8 @@ export default class AppointmentController {
             date: value.date ? value.date : appointment.date,
             time: value.time ? value.time : appointment.time,
             services: value.services ? value.services : appointment.services,
-            additionalInfo: value.additionalInfo ? value.additionalInfo : appointment.additionalInfo
+            additionalInfo: value.additionalInfo ? value.additionalInfo : appointment.additionalInfo,
+            email: value.email ? value.email : appointment.email
         }
 
         await datasources.appointmentDAOService.update({_id: appointment._id}, payload)
@@ -174,7 +187,7 @@ export default class AppointmentController {
         if(!appointment)
             return Promise.reject(CustomAPIError.response("Appointment does not exist.", HttpStatus.NOT_FOUND.code));
 
-        await datasources.applicationDAOService.updateByAny(
+        await datasources.appointmentDAOService.updateByAny(
             { _id: appointment._id },
             { 
                 status: value.status, 

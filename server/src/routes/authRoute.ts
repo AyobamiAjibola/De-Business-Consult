@@ -24,6 +24,12 @@ export const fetchUsersHandler = authenticateRouteWrapper(async (req, res) =>  {
     res.status(response.code).json(response);
 });
 
+export const getSingleUsersHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.getSingleUser(req);
+
+    res.status(response.code).json(response);
+});
+
 export const getAccessTokenHandler = async (req: Request, res: Response) =>  {
     const response = await authController.getAccessToken(req);
 

@@ -6,17 +6,23 @@ import CustomAPIError from "../exceptions/CustomAPIError";
 import HttpStatus from "../helpers/HttpStatus";
 import datasources from '../services/dao';
 import { UPLOAD_BASE_PATH } from "../config/constants";
-import formidable = require("formidable");
+// import formidable = require("formidable");
+import formidable from "formidable";
 import Application, { ApplicationStatus, IApplicationModel } from "../models/Application";
 import Generic from "../utils/Generic";
 import { Request, Response } from "express";
 import StripeWebhookService from "../services/StripeWebhookService";
 import settings from "../config/settings";
 import stripe from "../utils/StripeConfig";
+import { PaymentType } from "../models/Transaction";
+import rabbitMqService from "../utils/RabbitMQConfig";
 
-const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret);
+const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret, rabbitMqService);
+
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
+
+const paymentType = [PaymentType.Application, PaymentType.Appointment]
 
 export default class ApplicationController {
 
@@ -65,13 +71,14 @@ export default class ApplicationController {
       
           return Promise.resolve(response);
         }
-      }
+    }
 
     public async paymentIntent(req: Request) {
 
         const { error, value } = Joi.object<any>({
             amount: Joi.number().required().label("Service Amount"),
-            application: Joi.string().required().label("Application Id")
+            itemId: Joi.string().required().label("Item Id"),
+            paymentType: Joi.string().required().label("Payment Type")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -81,23 +88,51 @@ export default class ApplicationController {
               )
             );
 
-        const application = await datasources.applicationDAOService.findById(value.application);
-        if(!application)
-            return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code))
-        
-        const transaction = await datasources.transactionDAOService.findByAny({ application: value.application });
-        if(transaction && transaction.paid)
-            return Promise.reject(CustomAPIError.response("The application has already been paid for.", HttpStatus.BAD_REQUEST.code))
-        
+        if(!paymentType.includes(value.paymentType)) 
+            return Promise.reject(CustomAPIError.response(`Payment type provided is invalid.`, HttpStatus.NOT_FOUND.code))
+
+        let item;
+        let transaction;
+
+        switch (value.paymentType) {
+            case PaymentType.Application:
+                item = await datasources.applicationDAOService.findById(value.itemId);
+                if (!item) {
+                    return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code));
+                }
+
+                transaction = await datasources.transactionDAOService.findByAny({ application: item._id });
+                if (transaction && transaction.paid) {
+                    return Promise.reject(CustomAPIError.response("The Application has already been paid for.", HttpStatus.BAD_REQUEST.code));
+                }
+                break;
+
+            case PaymentType.Appointment:
+                item = await datasources.appointmentDAOService.findById(value.itemId);
+                if (!item) {
+                    return Promise.reject(CustomAPIError.response("Appointment does not exist.", HttpStatus.NOT_FOUND.code));
+                }
+
+                transaction = await datasources.transactionDAOService.findByAny({ appointment: item._id });
+                if (transaction && transaction.paid) {
+                    return Promise.reject(CustomAPIError.response("The Appointment has already been paid for.", HttpStatus.BAD_REQUEST.code));
+                }
+                break;
+
+            default:
+                return Promise.reject(CustomAPIError.response("Invalid payment type.", HttpStatus.BAD_REQUEST.code));
+        }
+
         try {
             const paymentIntent = await stripe.paymentIntents.create({
               amount: value.amount * 100,
               currency: 'usd',
               metadata: {
-                applicationId: value.application
+                itemId: item._id.toString(),//'66f94aa72a765e00cc9b8e7e',//,
+                paymentType: value.paymentType
               }
             });
-
+            
             const response: HttpResponse<any> = {
                 code: HttpStatus.OK.code,
                 message: 'Success',
@@ -121,29 +156,28 @@ export default class ApplicationController {
     }
 
     public async webhook(req: Request) {
-        let message = ''
+        let message = '';
         try {
             const event = await webhookService.verifyEvent(req);
             const result = await webhookService.handleEvent(event);
-        
+    
             if (result.status === 'success') {
-                message = 'success'
+                message = 'success';
             } else {
-                console.log(result.message, 'error message')
-                message = 'error message'
+                console.log(result.message, 'error message');
+                message = 'error message';
             }
-          } catch (error: any) {
-            console.log(`Webhook Error: ${error.message}`)
-            message = 'Webhook Error'
+        } catch (error: any) {
+            console.log(`Webhook Error: ${error.message}`);
+            message = 'Webhook Error';
         }
-
+    
         const response: HttpResponse<any> = {
             code: message === 'success' ? HttpStatus.OK.code : HttpStatus.BAD_REQUEST.code,
             message,
         };
-      
+    
         return Promise.resolve(response);
-
     }
 
     @TryCatch
@@ -625,7 +659,6 @@ export default class ApplicationController {
 
                 const payload: any = {
                     services: actualServices,
-                    paymentType: value.paymentType,
                     client: client._id,
                     fee: serviceFee.toString(),
                     status: ApplicationStatus.Submitted,

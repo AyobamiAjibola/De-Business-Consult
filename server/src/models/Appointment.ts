@@ -17,7 +17,11 @@ interface IAppointment {
     client: mongoose.Types.ObjectId | null,
     reasonForCanceling: string,
     transaction: mongoose.Types.ObjectId,
-    email: string | null
+    email: string | null,
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    
 };
 
 const appointmentSchema = new Schema<IAppointment>({
@@ -33,7 +37,10 @@ const appointmentSchema = new Schema<IAppointment>({
     client: { type: Schema.Types.ObjectId, allowNull: true, ref: 'Client' },
     reasonForCanceling: { type: String, allowNull: true },
     transaction: { type: Schema.Types.ObjectId, ref: 'Transaction' },
-    email: { type: String, allowNull: true }
+    email: { type: String, allowNull: true },
+    firstName: { type: String, allowNull: true },
+    lastName: { type: String, allowNull: true },
+    phone: { type: String, allowNull: true },
 }, { timestamps: true });
 
 appointmentSchema.pre(['findOne', 'find'], function (next) {

@@ -21,7 +21,10 @@ export default class AppointmentController {
             time: Joi.date().required().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
             clientId: Joi.string().optional().allow("").label('Client id'),
-            email: Joi.string().optional().allow("").label("Client email")
+            email: Joi.string().optional().allow("").label("Client email"),
+            firstName: Joi.string().optional().allow("").label("First name"),
+            lastName: Joi.string().optional().allow("").label("Last name"),
+            phone: Joi.string().optional().allow("").label("Phone number")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -90,13 +93,17 @@ export default class AppointmentController {
             additionalInfo: value.additionalInfo,
             client: client ? client._id : null,
             email: value.email ? value.email : null,
+            firstName: value.firstName ? value.firstName : null,
+            lastName: value.lastName ? value.lastName : null,
+            phone: value.phone ? value.phone : null
         }
 
-        await datasources.appointmentDAOService.create(payload as IAppointmentModel)
+        const newAppointment = await datasources.appointmentDAOService.create(payload as IAppointmentModel)
         
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
-            message: 'Successfully created appointment.'
+            message: 'Successfully created appointment.',
+            result: newAppointment._id
         };
       
         return Promise.resolve(response);
@@ -111,7 +118,10 @@ export default class AppointmentController {
             date: Joi.date().optional().label('Appointment date'),
             time: Joi.date().optional().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
-            email: Joi.string().optional().allow("").label("Client email")
+            email: Joi.string().optional().allow("").label("Client email"),
+            firstName: Joi.string().optional().allow("").label("First name"),
+            lastName: Joi.string().optional().allow("").label("Last name"),
+            phone: Joi.string().optional().allow("").label("Phone number")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -149,7 +159,10 @@ export default class AppointmentController {
             time: value.time ? value.time : appointment.time,
             services: value.services ? value.services : appointment.services,
             additionalInfo: value.additionalInfo ? value.additionalInfo : appointment.additionalInfo,
-            email: value.email ? value.email : appointment.email
+            email: value.email ? value.email : appointment.email,
+            firstName: value.firstName ? value.firstName : appointment.firstName,
+            lastName: value.lastName ? value.lastName : appointment.lastName,
+            phone: value.phone ? value.phone : appointment.phone
         }
 
         await datasources.appointmentDAOService.update({_id: appointment._id}, payload)

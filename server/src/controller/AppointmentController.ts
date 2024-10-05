@@ -9,8 +9,73 @@ import { Request } from "express";
 import { AppointmentStatus, IAppointmentModel } from "../models/Appointment";
 import Generic from "../utils/Generic";
 import moment from "moment";
+import AppointmentConfig, { IAppointmentConfigModel } from "../models/AppointmentConfig";
 
 export default class AppointmentController {
+
+    @TryCatch
+    public async createAppointmentConfig (req: Request) {
+        const { error, value } = Joi.object<any>({
+            amount: Joi.string().required().label("Amount"),
+            service: Joi.number().required().label("Number of services")
+        }).validate(req.body);
+        if (error)
+            return Promise.reject(
+              CustomAPIError.response(
+                error.details[0].message,
+                HttpStatus.BAD_REQUEST.code
+              )
+            );
+
+        const service = await datasources.appointmentConfigDAOService.findByAny({ service: value.service });
+        if(service)
+            return Promise.reject(CustomAPIError.response("You have a service config with the selected number.", HttpStatus.BAD_REQUEST.code));
+
+        await datasources.appointmentConfigDAOService.create({ 
+            amount: value.amount,
+            service: value.service
+        } as IAppointmentConfigModel);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.CREATED.code,
+            message: 'Successful.'
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async getAppointmentConfig (req: Request) {
+        const configs = await datasources.appointmentConfigDAOService.findAll({});
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.CREATED.code,
+            message: 'Successful.',
+            results: configs
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async deleteAppointmentConfig (req: Request) {
+        const serviceConfigId = req.params.serviceConfigId;
+
+        const service = await datasources.appointmentConfigDAOService.findById(serviceConfigId);
+        if(!service)
+            return Promise.reject(CustomAPIError.response("Service config does not exist", HttpStatus.NOT_FOUND.code));
+
+        await datasources.appointmentConfigDAOService.deleteById(service._id);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully deleted.'
+        };
+      
+        return Promise.resolve(response);
+    }
 
     @TryCatch
     public async createAppointment (req: Request) {

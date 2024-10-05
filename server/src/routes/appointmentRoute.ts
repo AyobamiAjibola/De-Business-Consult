@@ -4,6 +4,20 @@ import { Request, Response } from "express";
 
 const appointmentController = new AppointmentController();
 
+export const getAppointmentConfigHandler = async (req: Request, res: Response) =>  {
+    const response = await appointmentController.getAppointmentConfig(req);
+    res.status(response.code).json(response);
+};
+
+export const createAppointmentConfigHandler = async (req: Request, res: Response) =>  {
+    const response = await appointmentController.createAppointmentConfig(req);
+    res.status(response.code).json(response);
+};
+
+export const deleteAppointmentConfigHandler = async (req: Request, res: Response) =>  {
+    const response = await appointmentController.deleteAppointmentConfig(req);
+    res.status(response.code).json(response);
+};
 
 export const createAppointmentHandler = async (req: Request, res: Response) =>  {
     const response = await appointmentController.createAppointment(req);

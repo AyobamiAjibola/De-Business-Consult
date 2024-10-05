@@ -5,6 +5,7 @@ import ServicesRepository from "../../repositories/ServicesRepository";
 import ApplicationRepository from "../../repositories/ApplicationRepository";
 import TransactionRepository from "../../repositories/TransactionRepository";
 import AppointmentRepository from "../../repositories/AppointmentRepository";
+import AppointmentConfigRepository from "../../repositories/AppointmentConfigRepository";
 import BlogCommentsRepository from "../../repositories/BlogCommentsRepository";
 import BlogRepository from "../../repositories/BlogRepository";
 import DeBizDocsRepository from "../../repositories/DeBizDocsRepository";
@@ -21,6 +22,7 @@ import ServicesDAOService from "./ServicesDAOService";
 import ApplicationDAOService from "./ApplicationDAOService";
 import TransactionDAOService from "./TransactionDAOService";
 import AppointmentDAOService from "./AppointmentDAOService";
+import AppointmentConfigDAOService from "./AppointmentConfigDAOService";
 import BlogCommentsDAOService from "./BlogCommentsDAOService";
 import BlogDAOService from "./BlogDAOService";
 import DeBizDocsDAOService from "./DeBizDocsDAOService";
@@ -37,6 +39,7 @@ const servicesRepository= new ServicesRepository();
 const transactionRepository= new TransactionRepository();
 const applicationRepository= new ApplicationRepository();
 const appointmentRepository= new AppointmentRepository();
+const appointmentConfigRepository= new AppointmentConfigRepository();
 const blogCommentsRepository= new BlogCommentsRepository();
 const blogRepository= new BlogRepository();
 const deBizDocsRepository= new DeBizDocsRepository();
@@ -53,6 +56,7 @@ const servicesDAOService = new ServicesDAOService(servicesRepository);
 const applicationDAOService = new ApplicationDAOService(applicationRepository);
 const transactionDAOService = new TransactionDAOService(transactionRepository);
 const appointmentDAOService = new AppointmentDAOService(appointmentRepository);
+const appointmentConfigDAOService = new AppointmentConfigDAOService(appointmentConfigRepository);
 const blogCommentsDAOService = new BlogCommentsDAOService(blogCommentsRepository);
 const blogDAOService = new BlogDAOService(blogRepository);
 const deBizDocsDAOService = new DeBizDocsDAOService(deBizDocsRepository);
@@ -65,6 +69,7 @@ const chatDAOService = new ChatDAOService(chatRepository);
 export default {
     userDAOService,
     chatMessageDAOService,
+    appointmentConfigDAOService,
     chatDAOService,
     applicationDAOService,
     transactionDAOService,

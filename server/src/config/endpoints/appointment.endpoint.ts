@@ -2,13 +2,34 @@ import { appCommonTypes } from '../../@types/app-common';
 import RouteEndpoint = appCommonTypes.RouteEndpoints;
 import { 
     changeAppointmentStatusHandler, 
+    createAppointmentConfigHandler, 
     createAppointmentHandler, 
+    deleteAppointmentConfigHandler, 
     fetchAllAppointmentsHandler, 
     fetchClientAppointmentsHandler, 
+    getAppointmentConfigHandler, 
     updateAppointmentHandler 
 } from '../../routes/appointmentRoute';
 
 const appointmentEndpoints: RouteEndpoint  = [
+    {
+        name: 'create appointment config',
+        method: 'post',
+        path: '/create-appointment-config',
+        handler: createAppointmentConfigHandler
+    },
+    {
+        name: 'delete appointment config',
+        method: 'delete',
+        path: '/delete-appointment-config/:serviceConfigId',
+        handler: deleteAppointmentConfigHandler
+    },
+    {
+        name: 'fetch appointment config',
+        method: 'get',
+        path: '/get-appointment-config',
+        handler: getAppointmentConfigHandler
+    },
     {
         name: 'create appointment',
         method: 'post',

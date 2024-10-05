@@ -578,8 +578,7 @@ export default class ApplicationController {
                 }
 
                 const serviceBody = {
-                    services,
-                    paymentType: fields.paymentType
+                    services
                 }
 
                 const { error, value } = Joi.object<IApplicationModel>({
@@ -600,6 +599,9 @@ export default class ApplicationController {
 
                 if(!client)
                     return reject(CustomAPIError.response("Not found", HttpStatus.NOT_FOUND.code));
+
+                if(value.services.length === 0)
+                    return reject(CustomAPIError.response("Services cannot be empty.", HttpStatus.BAD_REQUEST.code));
 
                 let serviceFee = 0;
                 let docsLength = 0;

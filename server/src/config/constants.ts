@@ -67,7 +67,14 @@ import QueueEvents = appCommonTypes.QueueEvents;
 
   export const MAX_SIZE_IN_BYTE = 10000 * 1024; // 10MB
   export const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
-  export const ALLOWED_FILE_TYPES2 = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  export const ALLOWED_FILE_TYPES2 = [
+    'image/jpeg', 'image/png', 
+    'image/jpg', 'application/pdf', 
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx newer ms word
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',       // .xlsx
+    'text/plain', //.txt
+    'application/msword', // .doc older ms word
+  ];
 
   export const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'video/mp4', 'video/mkv', 'video/flv', 'video/webm'];
   export const MAX_SIZE_IN_BYTE_MEDIA = 200 * 1024 * 1024; // 200MB
@@ -78,16 +85,3 @@ import QueueEvents = appCommonTypes.QueueEvents;
 
   export const PAYMENT_CHANNELS = ['card', 'bank', 'ussd', 'qr', 'mobile_money', 'bank_transfer', 'eft'];
   export const PAYSTACK_EMAIL='ayurbarmi5@gmail.com';
-
-  export const HASHTAGS = [
-    ["#SchnitzelBurger", "#KarachiFood", "#KarachiEats", "#PakistanFoodies", "#KarachiRestaurants", "#FoodiePK", "#EatInKarachi", "#KarachiBurger", "#FoodLoversPK", "#TasteOfKarachi"],
-    ["#Delicious", "#BurgerLovers", "#CrispyChicken", "#CheddarCheese", "#Foodstagram", "#GourmetBurger", "#TastyTreat", "#FoodHeaven", "#KarachiDining", "#EatLocalPK"],
-    ["#Foodie", "#KarachiDelights", "#KarachiBites", "#BurgerTime", "#FoodieKarachi", "#KarachiFoodies", "#TastyKarachi", "#FoodCravings", "#KarachiCuisine", "#BurgersOfKarachi"],
-    ["#Yummy", "#KarachiFlavors", "#CrunchyChicken", "#CheddarLove", "#KarachiStreetFood", "#FoodHeavenKarachi", "#KarachiGourmet", "#BurgerAddict", "#FlavorsOfPakistan", "#KarachiSpecials"],
-    ["#FoodLovers", "#KarachiEateries", "#GourmetPK", "#KarachiTaste", "#BurgerCravings", "#KarachiFoodGuide", "#FoodLove", "#KarachiBurgerFest", "#TasteOfPakistan", "#DelightfulKarachi"],
-    ["#Tasty", "#KarachiCuisineLovers", "#ChickenBurger", "#CheddarGoodness", "#EatKarachi", "#FoodGuidePK", "#YummyKarachi", "#PakistaniFood", "#KarachiFoodBloggers", "#CrunchyGoodness"],
-    ["#FoodPorn", "#KarachiFoodiesClub", "#ChickenDelight", "#CheddarPerfection", "#KarachiSnacks", "#FoodEnthusiast", "#KarachiDishes", "#BurgerDelight", "#KarachiLocalFood", "#KarachiBurgers"],
-    ["#Gourmet", "#KarachiStreetEats", "#ChickenLovers", "#CheeseLovers", "#KarachiEatOut", "#FoodBloggerPK", "#KarachiFoodCulture", "#BurgerObsession", "#KarachiDelicacies", "#PakistaniCuisine"],
-    ["#TastyTreat", "#KarachiDelicacies", "#ChickenFeast", "#CheeseBurger", "#KarachiFlavor", "#FoodieAdventure", "#KarachiBitesAndEats", "#BurgerFanatic", "#KarachiBurgersAndMore", "#KarachiTasteBuds"],
-    ["#FoodHeaven", "#KarachiTasteTrail", "#CrunchyDelight", "#CheddarCheeseLovers", "#KarachiGourmetEats", "#PakistaniTaste", "#KarachiGourmetBurgers", "#BurgerHeaven", "#KarachiFoodJourney", "#KarachiChefs"]
-  ]

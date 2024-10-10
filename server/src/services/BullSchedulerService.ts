@@ -44,15 +44,14 @@ export const scheduleNotifications = async (id: string) => {
     const appointmentTimeWithoutZ = appointmentTime.toISOString().replace('Z', '');
     const actualAppointmentTime = moment(appointmentTimeWithoutZ).tz(timeZone)
     const notificationTimes = [
-        { time: actualAppointmentTime.subtract(10, 'minutes') }, // 1 day before , delay: 24 * 60 * 60 * 1000
-        // { time: actualAppointmentTime.subtract(20, 'minutes')}, // 20 minutes before delay: 20 * 60 * 1000 }
-        // { time: actualAppointmentTime.subtract(2, 'minutes') }
+        { time: actualAppointmentTime.subtract(1, 'day') }, // 1 day before
+        { time: actualAppointmentTime.subtract(20, 'minutes') } // 20 minutes before
     ];
-    const now = moment.tz(timeZone);
+
     for (const { time } of notificationTimes) {
+        const now = moment.tz(timeZone);
         const delay = time.diff(now);
-        // const delayInMinutes = delay / (60 * 1000);
-        // console.log(now, delayInMinutes, time)
+
         if (now.isBefore(time)) {
             if (notificationQueue) {
                 try {
@@ -71,7 +70,7 @@ export const scheduleNotifications = async (id: string) => {
                             }
                         }
                     );
-                    LOG.info(`Scheduled notification for appointment ${appointment.appointmentId}`);
+                    LOG.info(`Scheduled notification for appointment ${appointment.appointmentId} at ${time.format()}`);
                 } catch (error) {
                     LOG.error(`Failed to add job for appointment ${appointment.appointmentId}:`, error);
                 }

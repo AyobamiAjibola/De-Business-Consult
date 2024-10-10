@@ -59,7 +59,7 @@ export default function appointment_schedule_template({day, time, appointmentId}
 
 <body>
     <center class="wrapper">
-        <p class="subtext">Your appointment (${appointmentId}) is ${day > 0 ? 'tomorrow' : 'today'} at ${time}</p>
+        <p class="subtext">Your appointment with id:${appointmentId} is ${day > 0 ? 'tomorrow' : 'today'} at ${time}</p>
         <p class="subtext2">Thank you. Please be punctual.</p>
     </center>
 

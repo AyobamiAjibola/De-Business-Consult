@@ -14,7 +14,7 @@ import HttpStatus from '../helpers/HttpStatus';
 import { NextFunction, Request } from 'express';
 import UserToken from '../models/UserToken';
 import * as Jimp from 'jimp';
-import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, HASHTAGS, IMAGE_SIZE, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
+import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, IMAGE_SIZE, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
 import { UserType } from "../models/User";
 import { resolve } from "path";
 
@@ -239,6 +239,7 @@ export default class Generic {
   public static async handleFiles(file: any, basePath: string): Promise<{ result?: string, error?: string }> {
     try {
         if (!file) return { result: '' };
+        
         const allowedFileTypes = ALLOWED_FILE_TYPES2;
         if (!allowedFileTypes.includes(file.mimetype as string)) {
             throw new CustomAPIError(MESSAGES.file_type_error, HttpStatus.BAD_REQUEST.code);
@@ -347,11 +348,6 @@ export default class Generic {
         console.error(error);
         throw error; // Rethrow the error to handle it upstream
     }
-  }
-
-  public static getRandomHashtagArray() {
-    const randomIndex = Math.floor(Math.random() * HASHTAGS.length);
-    return HASHTAGS[randomIndex];
   }
 
   public static async compressMenuImage(imagePath: string): Promise<string> {

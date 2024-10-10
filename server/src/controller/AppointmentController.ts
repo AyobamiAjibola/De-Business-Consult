@@ -206,7 +206,7 @@ export default class AppointmentController {
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
             message: 'Successfully created appointment.',
-            result: "newAppointment._id"
+            result: newAppointment._id
         };
       
         return Promise.resolve(response);

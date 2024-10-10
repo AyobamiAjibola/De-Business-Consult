@@ -8,8 +8,12 @@ import datasources from '../services/dao';
 import { Request } from "express";
 import { AppointmentStatus, IAppointmentModel } from "../models/Appointment";
 import Generic from "../utils/Generic";
-import moment from "moment";
-import AppointmentConfig, { IAppointmentConfigModel } from "../models/AppointmentConfig";
+import moment from "moment-timezone";
+import { IAppointmentConfigModel } from "../models/AppointmentConfig";
+import appointment_template from "../resources/template/email/appointment";
+import { scheduleNotifications } from "../services/BullSchedulerService";
+import status_template from "../resources/template/email/status_template";
+import rabbitMqService from "../config/RabbitMQConfig";
 
 export default class AppointmentController {
 
@@ -100,25 +104,19 @@ export default class AppointmentController {
             );
 
         let client;
-        let appointment;
         if(value.clientId) {
             client = await datasources.clientDAOService.findById(value.clientId);
             if(!client)
                 return Promise.reject(CustomAPIError.response("Client not found", HttpStatus.NOT_FOUND.code));
-
-            appointment = await datasources.appointmentDAOService.findByAny({
-                client: value.client ? client?._id : null,
-                status: AppointmentStatus.Confirmed
-            });
-        } else {
-            appointment = await datasources.appointmentDAOService.findByAny({
-                email: value.email,
-                status: AppointmentStatus.Confirmed
-            });
         }
 
         const newAppointmentTime = new Date(value.time).getHours();
-        const newAppointmentDate = moment(value.date).format('DD/MM/YY')
+        const newAppointmentDate = moment(value.date).format('DD/MM/YY');
+
+        const appointment = await datasources.appointmentDAOService.findByAny({
+            email: value.email,
+            status: AppointmentStatus.Confirmed
+        });
         
         if (
             appointment &&
@@ -133,19 +131,35 @@ export default class AppointmentController {
             );
         }
 
-        const selectedDate = new Date(value.date);
-        const currentDate = new Date();
+        const selectedDateTime = new Date(value.date);
+        const currentDateTime = new Date();
 
-        selectedDate.setHours(0, 0, 0, 0);
-        currentDate.setHours(0, 0, 0, 0);
+        // Reset the time of the current date to the start of the day
+        selectedDateTime.setHours(0, 0, 0, 0);
+        currentDateTime.setHours(0, 0, 0, 0);
 
-        if (selectedDate < currentDate) {
+        // Check if the selected date is in the past
+        if (selectedDateTime < currentDateTime) {
             return Promise.reject(
                 CustomAPIError.response(
-                    "You cannot select a date that is earlier than the current date.",
+                    "You cannot select a date and time that is earlier than the current date and time.",
                     HttpStatus.FORBIDDEN.code
                 )
             );
+        }
+
+        if (selectedDateTime.toDateString() === currentDateTime.toDateString()) {
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const difference = moment(value.date).tz(timeZone).diff(moment().tz(timeZone));
+
+            if (difference < 0) {
+                return Promise.reject(
+                    CustomAPIError.response(
+                        "You cannot select a time that is in the past.",
+                        HttpStatus.FORBIDDEN.code
+                    )
+                );
+            }
         }
 
         const id = await Generic.generateRandomNumberString(10);
@@ -157,18 +171,42 @@ export default class AppointmentController {
             appointmentId: `#${id}`,
             additionalInfo: value.additionalInfo,
             client: client ? client._id : null,
-            email: value.email ? value.email : null,
+            email: value.email ? value.email : client?.email,
             firstName: value.firstName ? value.firstName : null,
             lastName: value.lastName ? value.lastName : null,
             phone: value.phone ? value.phone : null
         }
 
-        const newAppointment = await datasources.appointmentDAOService.create(payload as IAppointmentModel)
+        const newAppointment = await datasources.appointmentDAOService.create(payload as IAppointmentModel);
+
+        const servicePromises = newAppointment.services.map(async (serviceId) => {
+            const service = await datasources.servicesDAOService.findById(serviceId);
+            return service?.name;
+        });
+        const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
+
+        const mail = appointment_template({
+            date: moment.utc(newAppointment.date).format('DD-MM-YYYY'),
+            time: moment.utc(newAppointment.time).format('h:mm a'),
+            services: serviceNames.join(', '),
+            appointmentId: newAppointment.appointmentId
+        });
+
+        const emailPayload = {
+            to: newAppointment.email,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+            subject: `De Business Consult.`,
+            html: mail
+        }
+
+        await rabbitMqService.sendEmail({data: emailPayload});
+        await scheduleNotifications(newAppointment._id);
         
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
             message: 'Successfully created appointment.',
-            result: newAppointment._id
+            result: "newAppointment._id"
         };
       
         return Promise.resolve(response);
@@ -272,6 +310,23 @@ export default class AppointmentController {
                 reasonForDecline: value.status === AppointmentStatus.Canceled ? value.reasonForCanceling : null
             }
         )
+
+        //SEND OTP TO USER EMAIL
+        const mail = status_template({
+            item: appointment.appointmentId,
+            type: 'appointment',
+            status: value.status
+        });
+
+        const emailPayload = {
+            to: appointment.email,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+            subject: `De Business Consult.`,
+            html: mail
+        }
+
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,

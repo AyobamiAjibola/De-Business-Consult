@@ -1,33 +1,50 @@
-import amqp, { Connection, Channel, Message } from 'amqplib';
-import settings from '../config/settings';
-import AppLogger from '../utils/AppLogger';
+import { Connection, Channel } from 'amqplib';
 import Stripe from 'stripe';
 import { processEvent } from './PaymentEventWorkerService';
+import queue from '../config/queue';
+import { Logger } from 'winston';
+import SendMailService from './SendMailService';
+import LOG from '../config/AppLoggerConfig';
 
-const logger = AppLogger.init('server').logger;
-// @ts-ignore
-const config = settings.queue[settings.service.env];
+const sendMailService = new SendMailService();
 
 class RabbitMQService {
-    private connection: Connection | null;
-    private channel: Channel | null;
-    private queueName: string;
+    private connection: Connection | null = null;
+    private channel: Channel | null = null;
+    private readonly queueName: string;
+    private readonly emailQueue: string;
+    private data: any | null = null;
+    private readonly LOG: Logger = LOG
 
-    constructor(queueName: string) {
-        this.connection = null;
-        this.channel = null;
+    constructor(queueName: string, emailQueue: string) {
         this.queueName = queueName;
+        this.emailQueue = emailQueue;
+    }
+
+    // Check if channel is initialized
+    private ensureChannelInitialized(): void {
+        if (!this.channel) {
+            this.LOG.error('RabbitMQ channel is not initialized');
+            throw new Error('RabbitMQ channel is not initialized');
+        }
     }
 
     async connectToRabbitMQ(): Promise<void> {
         try {
-            this.connection = await amqp.connect(config);
+            this.connection = await queue.client();
             this.channel = await this.connection.createChannel();
-            await this.channel.assertQueue(this.queueName, { durable: true });
-            logger.info(`RabbitMQService connected to queue: ${this.queueName}`);
-            await this.startWorker()
+
+            await Promise.all([
+                this.channel.assertQueue(this.queueName, { durable: true }),
+                this.channel.assertQueue(this.emailQueue, { durable: true }),
+            ]);
+
+            this.LOG.info(`Connected to queues: ${this.queueName}, ${this.emailQueue}`);
+
+            await this.startWorker();
+            await this.consumeEmails();
         } catch (error) {
-            logger.error('Error connecting to RabbitMQ:', error);
+            this.LOG.error('Error connecting to RabbitMQ:', error);
             throw error;
         }
     }
@@ -42,51 +59,85 @@ class RabbitMQService {
                 await this.connection.close();
                 this.connection = null;
             }
-            logger.info(`Disconnected from RabbitMQ queue: ${this.queueName}`);
+            this.LOG.info(`Disconnected from RabbitMQ queue: ${this.queueName}`);
         } catch (error) {
-            logger.error('Error disconnecting from RabbitMQ:', error);
+            this.LOG.error('Error disconnecting from RabbitMQ:', error);
         }
     }
 
-    public async startWorker() {
-        if (!this.channel) {
-            logger.error('RabbitMQ channel is not initialized for worker');
-            return;
-        }
+    private async startWorker(): Promise<void> {
+        this.ensureChannelInitialized()
 
-        this.channel.consume(this.queueName, async (msg) => {
-            if (msg !== null) {
-                const event: Stripe.Event = JSON.parse(msg.content.toString());
-    
-                try {
-                    await processEvent(event);
-                    this.channel?.ack(msg);  // Acknowledge the message after processing
-                } catch (error) {
-                    logger.error('Error processing event:', error);
-                    this.channel?.nack(msg);  // Reject the message if processing failed
-                }
+        this.channel?.consume(this.queueName, async (msg) => {
+            if (!msg) return;
+
+            const event: Stripe.Event = JSON.parse(msg.content.toString());
+
+            try {
+                await processEvent(event);
+                this.channel?.ack(msg); // Acknowledge after successful processing
+            } catch (error) {
+                this.LOG.error('Error processing event:', error);
+                this.channel?.nack(msg); // Reject on failure
             }
         });
     }
 
-    public async publishMessage(message: any): Promise<void> {
-        if (!this.channel) {
-            logger.error('RabbitMQ channel is not initialized');
-            throw new Error('RabbitMQ channel is not initialized');
-        }
+    async publishMessage(message: any): Promise<void> {
+        this.ensureChannelInitialized()
 
         try {
-            // Convert the message to a Buffer and send it to the queue
             const messageBuffer = Buffer.from(JSON.stringify(message));
-            await this.channel.sendToQueue(this.queueName, messageBuffer, { persistent: true });
-            logger.info(`Message sent to queue ${this.queueName}:`, message);
+            await this.channel?.sendToQueue(this.queueName, messageBuffer, { persistent: true });
+            this.LOG.info(`Message sent to queue ${this.queueName}:`, message);
         } catch (error) {
-            logger.error('Error publishing message to RabbitMQ:', error);
+            this.LOG.error('Error publishing message to RabbitMQ:', error);
         }
     }
 
-    
+    public async sendEmail({ data }: { data: any }): Promise<void> {
+        this.data = data;
+        await this.produce();
+    }
 
+    private async produce(): Promise<void> {
+        this.ensureChannelInitialized()
+
+        try {
+            const messageBuffer = Buffer.from(JSON.stringify(this.data));
+            await this.channel?.sendToQueue(this.emailQueue, messageBuffer, { persistent: true });
+            this.LOG.info(`Message added to queue: ${this.emailQueue}`);
+        } catch (error) {
+            this.LOG.error('Failed to produce message:', error);
+        }
+    }
+
+    private async consumeEmails(): Promise<void> {
+        this.ensureChannelInitialized()
+
+        try {
+            await this.channel?.consume(
+                this.emailQueue,
+                async (msg) => {
+                    if (!msg) return;
+
+                    const data = JSON.parse(msg.content.toString());
+
+                    try {
+                        await sendMailService.sendMail(data);
+                        this.LOG.info(`Email sent successfully`);
+                        this.channel?.ack(msg);
+                    } catch (error) {
+                        this.LOG.error('Failed to send email:', error);
+                        this.channel?.nack(msg); // Requeue the message on failure
+                    }
+                },
+                { noAck: false } // Enable manual acknowledgment
+            );
+        } catch (error) {
+            this.LOG.error('Failed to consume messages:', error);
+        }
+    }
 }
 
 export default RabbitMQService;

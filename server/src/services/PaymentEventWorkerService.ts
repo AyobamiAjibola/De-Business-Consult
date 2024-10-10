@@ -1,6 +1,8 @@
 import Stripe from 'stripe';
 import datasources from './dao';
 import { ITransactionModel, PaymentStatus, PaymentType } from '../models/Transaction';
+import payment_success_template from '../resources/template/email/payment_success_template';
+import rabbitMqService from "../config/RabbitMQConfig";
 
 export async function processEvent(event: Stripe.Event) {
     switch (event.type) {
@@ -29,10 +31,10 @@ export async function processEvent(event: Stripe.Event) {
                 const updatedCharge = event.data.object as Stripe.Charge;
                 console.log('Charge was updated!');
                 
-                const paymentTypeField = updatedCharge.metadata.paymentType
+                const { paymentType, recipientEmail, itemNo } = updatedCharge.metadata;
 
                 const chargeTransaction = await datasources.transactionDAOService.findByAny({
-                    [paymentTypeField]: updatedCharge.metadata.itemId,
+                    [paymentType]: updatedCharge.metadata.itemId,
                     paymentIntentId: updatedCharge.billing_details.name
                 });
 
@@ -51,7 +53,24 @@ export async function processEvent(event: Stripe.Event) {
                         paid: updatedCharge.paid
                     };
 
-                    await datasources.transactionDAOService.update({ _id: chargeTransaction._id }, updateData);
+                    const transaction = await datasources.transactionDAOService.updateByAny({ _id: chargeTransaction._id }, updateData);
+
+                    //SEND OTP TO USER EMAIL
+                    const mail = payment_success_template({
+                        itemNo,
+                        paymentType,
+                        receipt: transaction?.receiptUrl
+                    });
+
+                    const emailPayload = {
+                        to: recipientEmail,
+                        replyTo: process.env.SMTP_EMAIL_FROM,
+                        from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+                        subject: `De Business Consult.`,
+                        html: mail
+                    }
+
+                    await rabbitMqService.sendEmail({data: emailPayload});
                 }
 
             } catch (error) {

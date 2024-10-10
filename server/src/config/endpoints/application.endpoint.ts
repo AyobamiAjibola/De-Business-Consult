@@ -9,6 +9,7 @@ import {
     fetchAllApplicationsHandler, 
     fetchClientApplicationsHandler, 
     fetchTransactionsHandler, 
+    getSingleApplicationHandler, 
     getSingleTransactionHandler, 
     paymentCheckoutHandler,
     paymentIntentHandler,
@@ -63,6 +64,12 @@ const applicationEndpoints: RouteEndpoint  = [
         method: 'get',
         path: '/fetch-applications',
         handler: fetchAllApplicationsHandler
+    },
+    {
+        name: 'get single application',
+        method: 'get',
+        path: '/get-single-application/:applicationId',
+        handler: getSingleApplicationHandler
     },
     {
         name: 'change applications status',

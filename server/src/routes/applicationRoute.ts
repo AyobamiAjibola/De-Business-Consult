@@ -52,6 +52,12 @@ export const fetchClientApplicationsHandler = authenticateRouteWrapper(async (re
     res.status(response.code).json(response);
 });
 
+export const getSingleApplicationHandler = async  (req: Request, res: Response) =>  {
+    const response = await applicationController.getSingleApplication(req);
+
+    res.status(response.code).json(response);
+};
+
 export const fetchAllApplicationsHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await applicationController.fetchAllApplications(req);
 

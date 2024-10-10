@@ -23,7 +23,7 @@ import DeBizDocs, { IDeBizDocsModel } from "../models/DeBizDocs";
 import { ISubscriberModel, SubscriberStatus } from "../models/Subscriber";
 import { ITestimonialModel } from "../models/Testimonial";
 import contact_us_template from "../resources/template/email/contactUs";
-import QueueManager from "../services/QueueManager";
+import rabbitMqService from "../config/RabbitMQConfig";
 
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
@@ -920,7 +920,7 @@ export default class AdminController {
             subject: `Contact us email.`,
             html: mail
         };
-        await QueueManager.dispatch({data: emailPayload});
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -1326,7 +1326,7 @@ export default class AdminController {
                         subject: `De Business Consult News Letter.`,
                         html: mail
                     };
-                    await QueueManager.dispatch({data: emailPayload});
+                    await rabbitMqService.sendEmail({data: emailPayload});
                 }
 
                 return resolve('news letter' as any)
@@ -1430,7 +1430,7 @@ export default class AdminController {
                         subject: `De Business Consult News Letter.`,
                         html: mail
                     };
-                    await QueueManager.dispatch({data: emailPayload});
+                    await rabbitMqService.sendEmail({data: emailPayload});
                 }
 
                 return resolve('news letter' as any)

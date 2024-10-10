@@ -15,7 +15,8 @@ import StripeWebhookService from "../services/StripeWebhookService";
 import settings from "../config/settings";
 import stripe from "../utils/StripeConfig";
 import { PaymentType } from "../models/Transaction";
-import rabbitMqService from "../utils/RabbitMQConfig";
+import rabbitMqService from "../config/RabbitMQConfig";
+import status_template from "../resources/template/email/status_template";
 
 const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret, rabbitMqService);
 
@@ -76,9 +77,11 @@ export default class ApplicationController {
     public async paymentIntent(req: Request) {
 
         const { error, value } = Joi.object<any>({
-            amount: Joi.number().required().label("Service Amount"),
+            amount: Joi.number().optional().label("Service Amount"),
             itemId: Joi.string().required().label("Item Id"),
-            paymentType: Joi.string().required().label("Payment Type")
+            paymentType: Joi.string().required().label("Payment Type"),
+            noOfServices: Joi.number().optional().label("No of services"),
+            email: Joi.string().required().label("Email")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -93,9 +96,14 @@ export default class ApplicationController {
 
         let item;
         let transaction;
+        let appointmentAmount: any;
+        let itemNo: string;
 
         switch (value.paymentType) {
             case PaymentType.Application:
+                if(!value.amount)
+                    return Promise.reject(CustomAPIError.response("Amount is required.", HttpStatus.NOT_FOUND.code))
+                
                 item = await datasources.applicationDAOService.findById(value.itemId);
                 if (!item) {
                     return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code));
@@ -105,6 +113,7 @@ export default class ApplicationController {
                 if (transaction && transaction.paid) {
                     return Promise.reject(CustomAPIError.response("The Application has already been paid for.", HttpStatus.BAD_REQUEST.code));
                 }
+                itemNo = item.applicationId;
                 break;
 
             case PaymentType.Appointment:
@@ -117,6 +126,17 @@ export default class ApplicationController {
                 if (transaction && transaction.paid) {
                     return Promise.reject(CustomAPIError.response("The Appointment has already been paid for.", HttpStatus.BAD_REQUEST.code));
                 }
+
+                if(!value.noOfServices || value.noOfServices === 0)
+                    return Promise.reject(CustomAPIError.response("Please provide length of services selected.", HttpStatus.NOT_FOUND.code))
+                
+                const service = await datasources.appointmentConfigDAOService.findByAny({ service: value.noOfServices });
+                if(!service)
+                    return Promise.reject(CustomAPIError.response("Please add an amount for the selected service length.", HttpStatus.NOT_FOUND.code))
+                
+                appointmentAmount = +service?.amount;
+                itemNo = item.appointmentId;
+
                 break;
 
             default:
@@ -125,12 +145,14 @@ export default class ApplicationController {
 
         try {
             const paymentIntent = await stripe.paymentIntents.create({
-              amount: value.amount * 100,
-              currency: 'usd',
-              metadata: {
-                itemId: item._id.toString(),//'66f94aa72a765e00cc9b8e7e',//,
-                paymentType: value.paymentType
-              }
+                amount: value.paymentType === PaymentType.Application ? value.amount * 100 : appointmentAmount * 100,
+                currency: 'usd',
+                metadata: {
+                    itemId: item._id.toString(),
+                    paymentType: value.paymentType,
+                    recipientEmail: value.email,
+                    itemNo
+                }
             });
             
             const response: HttpResponse<any> = {
@@ -330,6 +352,26 @@ export default class ApplicationController {
     }
 
     @TryCatch
+    public async getSingleApplication (req: Request) {
+        const applicationId = req.params.applicationId;
+
+        const [application] = await Promise.all([
+            datasources.applicationDAOService.findById(applicationId)
+        ]);
+
+        if(!application)
+            return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code))
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: "Successful",
+            result: application
+        };
+      
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
     public async fetchAllApplications (req: Request) {
         const userId = req.user._id;
         const searchQuery = req.query.q;
@@ -402,6 +444,8 @@ export default class ApplicationController {
         if(!application)
             return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code));
 
+        const client = await datasources.clientDAOService.findById(application.client);
+
         await datasources.applicationDAOService.updateByAny(
             { _id: application._id },
             { 
@@ -409,6 +453,23 @@ export default class ApplicationController {
                 reasonForDecline: value.status === ApplicationStatus.Declined ? value.reasonForDecline : null
             }
         )
+
+        //SEND OTP TO USER EMAIL
+        const mail = status_template({
+            item: application.applicationId,
+            type: 'application',
+            status: value.status
+        });
+
+        const emailPayload = {
+            to: client?.email,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+            subject: `De Business Consult.`,
+            html: mail
+        }
+
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,

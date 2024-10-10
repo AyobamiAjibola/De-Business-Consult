@@ -14,11 +14,12 @@ import { IUserModel, UserType } from "../models/User";
 import Generic from "../utils/Generic";
 import { ISignUpAtemptModel } from "../models/SignUpAtempt";
 import signup_template from "../resources/template/email/signup";
-import moment from "moment";
+import moment from 'moment-timezone';
 import { ClientStatus, IClientModel } from "../models/Client";
 import formidable, { File } from 'formidable';
 import { UPLOAD_BASE_PATH } from "../config/constants";
-import QueueManager from "../services/QueueManager";
+import reg_template from "../resources/template/email/reg_template";
+import rabbitMqService from "../config/RabbitMQConfig";
 
 interface TokenTypes {
     accessToken: string, 
@@ -27,6 +28,7 @@ interface TokenTypes {
 
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export default class AuthenticationController {
     private readonly passwordEncoder: BcryptPasswordEncoder | undefined;
@@ -164,14 +166,21 @@ export default class AuthenticationController {
             datasources.signUpAtemptDAOService.findByAny({ email: value.email }),
             datasources.clientDAOService.findByAny({ companyName: value.companyName.toLowerCase() }),
         ]); 
+
+        let isDeleted = false;
+        if(signUpLink && signUpLink.expiredAt < moment().tz(timeZone).valueOf()) {
+            await datasources.signUpAtemptDAOService.deleteById(signUpLink._id)
+            isDeleted = true
+        }
+
         if(clientEmail)
             return Promise.reject(CustomAPIError.response("A client with this email already exist.", HttpStatus.CONFLICT.code));
-        if(signUpLink && signUpLink.status === 'pending' )
+        if(!isDeleted && signUpLink && signUpLink.status === 'pending' )
             return Promise.reject(CustomAPIError.response(`You have a pending registration with this email: ${value.email}. Please check your email for the sign up link.`, HttpStatus.CONFLICT.code));
         if(clientCompanyName)
             return Promise.reject(CustomAPIError.response(`A client with this company name: ${value.companyName} already exist.`, HttpStatus.CONFLICT.code));
 
-        const expiredAt = moment().add(2, 'hours').valueOf();
+        const expiredAt = moment().tz(timeZone).add(2, 'minute').valueOf();
 
         const payload = {
             ...value,
@@ -195,7 +204,7 @@ export default class AuthenticationController {
             html: mail
         }
 
-        await QueueManager.dispatch({data: emailPayload});
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         const re: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -214,18 +223,20 @@ export default class AuthenticationController {
             datasources.signUpAtemptDAOService.findById(id)
         ]); 
 
-        const currentTime = moment().valueOf();
+        const currentTime = moment().tz(timeZone).valueOf();
 
         if(!signUpLink)
             return Promise.reject(CustomAPIError.response("The sign up link is invalid.", HttpStatus.NOT_FOUND.code));
 
         if(signUpLink.status === 'expired')
-            return Promise.reject(CustomAPIError.response("The sign up link is expired.", HttpStatus.FORBIDDEN.code));
+            return Promise.reject(CustomAPIError.response("The sign up link is expired. Restart the sign up process.", HttpStatus.FORBIDDEN.code));
 
         if(signUpLink.expiredAt < currentTime) {
             await datasources.signUpAtemptDAOService.updateByAny({_id: signUpLink._id}, {status: 'expired'})
-            return Promise.reject(CustomAPIError.response("The sign up link is expired.", HttpStatus.FORBIDDEN.code));
+            return Promise.reject(CustomAPIError.response("Can not verify the sign up link. Please restart the sign up process.", HttpStatus.FORBIDDEN.code));
         }
+
+        await datasources.signUpAtemptDAOService.updateByAny({_id: signUpLink._id}, {status: 'verified'})
 
          const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -254,17 +265,14 @@ export default class AuthenticationController {
             datasources.signUpAtemptDAOService.findById(id)
         ]); 
 
-        const currentTime = moment().valueOf();
-
         if(!signUpLink)
             return Promise.reject(CustomAPIError.response("The sign up link is invalid.", HttpStatus.NOT_FOUND.code));
 
         if(signUpLink.status === 'expired')
-            return Promise.reject(CustomAPIError.response("The sign up link is expired.", HttpStatus.FORBIDDEN.code));
+            return Promise.reject(CustomAPIError.response("The sign up link is expired. Restart the sign up process.", HttpStatus.FORBIDDEN.code));
 
-        if(signUpLink.expiredAt < currentTime) {
-            await datasources.signUpAtemptDAOService.updateByAny({_id: signUpLink._id}, {status: 'expired'})
-            return Promise.reject(CustomAPIError.response("The sign up link is expired.", HttpStatus.FORBIDDEN.code));
+        if(signUpLink.status !== 'verified') {
+            return Promise.reject(CustomAPIError.response("Please verify the sign up link.", HttpStatus.FORBIDDEN.code));
         };
 
         const password = await this.passwordEncoder?.encode(value.password as string);
@@ -282,6 +290,27 @@ export default class AuthenticationController {
 
         await datasources.clientDAOService.create(payload as IClientModel);
         await datasources.signUpAtemptDAOService.deleteById(signUpLink._id);
+
+        //SEND OTP TO USER EMAIL
+        const mail = reg_template({
+            header: `Welcome to De Business Consult`,
+            sub: `Empowering Your Financial Success Together.`,
+            body: `We build personal relationships to deliver tailored, 
+                    results-driven solutions. Our expert team offers comprehensive 
+                    services with a personal touch, committed to your success.`,
+            footer: `Sign in today to see what we can do for you.`,
+            subFooter: `${process.env.CLIENT_URL}`
+        });
+
+        const emailPayload = {
+            to: signUpLink.email,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+            subject: `De Business Consult.`,
+            html: mail
+        }
+
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -451,7 +480,7 @@ export default class AuthenticationController {
             html: mail
         };
 
-        await QueueManager.dispatch({data: emailPayload});
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         await datasources.clientDAOService.updateByAny({
             _id: client._id
@@ -496,7 +525,7 @@ export default class AuthenticationController {
             subject: `De Business Consult.`,
             html: mail
         };
-        await QueueManager.dispatch({data: emailPayload});
+        await rabbitMqService.sendEmail({data: emailPayload});
 
         await datasources.userDAOService.updateByAny({
             _id: user._id

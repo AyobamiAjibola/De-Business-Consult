@@ -16,7 +16,6 @@ const server = http.createServer(app);
 
 async function scheduler() {
   await initializeNotificationQueue();
-  // await scheduleNotifications();
   processNotifications(); 
 }
 

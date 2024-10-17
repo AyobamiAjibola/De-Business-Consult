@@ -1,4 +1,4 @@
-import express, { json, static as _static, Request } from "express";
+import express, { json, static as _static, Request, Response } from "express";
 import path from "path";
 import helmet from "helmet";
 import cors from "cors";
@@ -8,6 +8,8 @@ import settings from "./config/settings";
 import globalExceptionHandler from "./middleware/globalExceptionHandler";
 import router from "./routes/index";
 import { webhookHandler } from "./routes/applicationRoute";
+import fs from "fs";
+import archiver from "archiver";
 
 const app = express();
 export const corsOptions = {
@@ -30,9 +32,59 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 app.use("/uploads", _static(path.resolve("uploads")));
 
+//STRIPE WEBHOOK
 app.post('/api/v1/webhook', express.raw({ type: 'application/json' }), webhookHandler);
 
 app.use(json()); 
+
+//APPLICATION FILE DOWNLOAD API
+app.post('/api/v1/download', async (req: Request, res: Response) => {
+  //const filename = '02b0afab-f469-44b7-b5ef-cc6cef9da010.png';//req.params.filename;
+  const {files, type} = req.body;
+
+  let array: any = []
+  files.map((filename: any) => {
+    if(type === 'admin') {
+      array.push(path.join(__dirname, '../uploads/applications', filename))
+    } else {
+      array.push(path.join(__dirname, '../uploads/successful-applications', filename))
+    }
+  })
+
+  const application = {
+    successful: array
+  };
+
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  const zipFilename = `application_docs.zip`;
+
+  // Set headers for the response
+  res.setHeader('Content-Disposition', `attachment; filename=${zipFilename}`);
+  res.setHeader('Content-Type', 'application/zip');
+
+  // Pipe the archive to the response stream
+  archive.pipe(res);
+
+  for (const filePath of application.successful) {
+    if (fs.existsSync(filePath)) {
+      const fileNameInZip = path.basename(filePath); // Get the base file name
+      console.log('Adding file to zip:', filePath);
+      archive.file(filePath, { name: fileNameInZip });
+    } else {
+      console.error('File not found:', filePath);
+      res.status(404).send('File not found'); // Return 404 if the file does not exist
+      return; // Stop further processing
+    }
+  }
+
+  // Finalize the archive (this finishes the stream)
+  try {
+    await archive.finalize();
+  } catch (error) {
+    console.error('Error finalizing archive:', error);
+    res.status(500).send('Error creating zip file');
+  }
+});
 
 app.use(`${settings.service.apiRoot}`, router); // All routes middleware
 

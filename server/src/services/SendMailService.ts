@@ -22,7 +22,12 @@ class SendMailService {
         }
     })
 
-    public sendMail(data: any): Promise<any> {
+    private delay(ms: number): Promise<void> {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    public async sendMail(data: any, delayMs = 2000): Promise<any> {
+      await this.delay(delayMs);
       return new Promise((resolve, reject) => {
         this.transporter.sendMail(data, (error, info) => {
           if (error) {

@@ -5,7 +5,7 @@ import startup from './startup';
 import AppLogger from './utils/AppLogger';
 import SocketService from './services/SocketIoService';
 import rabbitMqService from './config/RabbitMQConfig';
-import initializeNotificationQueue, { processNotifications, scheduleNotifications } from './services/BullSchedulerService';
+import initializeNotificationQueue, { processNotifications } from './services/BullSchedulerService';
 
 const socketIoService = new SocketService();
 

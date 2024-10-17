@@ -4,7 +4,7 @@ import {
     changeApplicationsStatusHandler,
     createApplicationHandler,
     deleteTransactionHandler,
-    downloadApplicationDocsHandler,
+    // downloadApplicationDocsHandler,
     feeCalculatorV1Handler, 
     fetchAllApplicationsHandler, 
     fetchClientApplicationsHandler, 
@@ -77,12 +77,12 @@ const applicationEndpoints: RouteEndpoint  = [
         path: '/change-applications-status/:applicationId',
         handler: changeApplicationsStatusHandler
     },
-    {
-        name: 'download application docs',
-        method: 'get',
-        path: '/download-application-docs/:applicationId',
-        handler: downloadApplicationDocsHandler
-    },
+    // {
+    //     name: 'download application docs',
+    //     method: 'post',
+    //     path: '/download-application-docs',
+    //     handler: downloadApplicationDocsHandler
+    // },
     {
         name: 'create application',
         method: 'post',

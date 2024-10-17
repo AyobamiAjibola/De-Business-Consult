@@ -1,14 +1,18 @@
 import Bull from 'bull';
 import redisClient from '../config/redisConfig';
 import LOG from '../config/AppLoggerConfig';
-import datasources from './dao';
-import SendMailService from './SendMailService';
 import appointment_schedule_template from '../resources/template/email/appointment_schedule';
 import moment from 'moment-timezone';
+import rabbitMqService from '../config/RabbitMQConfig';
 
-const sendMailService = new SendMailService();
 let notificationQueue: Bull.Queue | null = null;
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+interface IProps {
+    appointmentTime: Date, 
+    email: string | null,
+    appointmentId: string
+}
 
 // Initialize the notification queue
 const initializeNotificationQueue = async (): Promise<Bull.Queue | null> => {
@@ -35,17 +39,17 @@ const initializeNotificationQueue = async (): Promise<Bull.Queue | null> => {
 };
 
 // Schedule notifications for appointments
-export const scheduleNotifications = async (id: string) => {
-    const appointment = await datasources.appointmentDAOService.findById(id)
-    
-    if(!appointment) return;
+export const scheduleNotifications = async ({
+    appointmentTime, 
+    email,
+    appointmentId
+}: IProps) => {
 
-    const { time: appointmentTime, email } = appointment;
     const appointmentTimeWithoutZ = appointmentTime.toISOString().replace('Z', '');
     const actualAppointmentTime = moment(appointmentTimeWithoutZ).tz(timeZone)
     const notificationTimes = [
-        { time: actualAppointmentTime.subtract(1, 'day') }, // 1 day before
-        { time: actualAppointmentTime.subtract(20, 'minutes') } // 20 minutes before
+        { time: actualAppointmentTime.clone().subtract(1, 'day') }, // 1 day before
+        { time: actualAppointmentTime.clone().subtract(20, 'minutes') } // 20 minutes before
     ];
 
     for (const { time } of notificationTimes) {
@@ -57,7 +61,7 @@ export const scheduleNotifications = async (id: string) => {
                 try {
                     await notificationQueue.add(
                         {
-                            appointmentId: appointment.appointmentId,
+                            appointmentId,
                             email,
                             appointmentTime,
                         },
@@ -70,9 +74,9 @@ export const scheduleNotifications = async (id: string) => {
                             }
                         }
                     );
-                    LOG.info(`Scheduled notification for appointment ${appointment.appointmentId} at ${time.format()}`);
+                    LOG.info(`Scheduled notification for appointment ${appointmentId} at ${time.format()}`);
                 } catch (error) {
-                    LOG.error(`Failed to add job for appointment ${appointment.appointmentId}:`, error);
+                    LOG.error(`Failed to add job for appointment ${appointmentId}:`, error);
                 }
             }
         }
@@ -106,8 +110,8 @@ export const processNotifications = () => {
                     subject: `De Business Consult.`,
                     html: mail
                 }
-
-                await sendMailService.sendMail(emailPayload);
+                await rabbitMqService.sendEmail({data: emailPayload});
+                //await sendMailService.sendMail(emailPayload);
                 LOG.info(`Notification sent for appointment: ${appointmentId}`);
             } catch (error) {
                 LOG.error(`Failed to send notification for appointment ${appointmentId}:`, error);

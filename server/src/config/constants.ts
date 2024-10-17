@@ -46,6 +46,10 @@ import QueueEvents = appCommonTypes.QueueEvents;
     name: 'DE-PAYMENT'
   };
 
+  export const DEAD_LETTER_QUEUE: QueueEvents = {
+    name: 'DLQ'
+  };
+
 
   export const AGENDA_COLLECTION_NAME = 'cron_jobs';
   export const AGENDA_SCHEDULE_NAME = 'scheduled_jobs';

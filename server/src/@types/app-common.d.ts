@@ -27,7 +27,7 @@ export declare namespace appCommonTypes {
     driverId: string;
   };
 
-  type QueueMailTypes = 'DE-EMAIL' | 'DE-PAYMENT';
+  type QueueMailTypes = 'DE-EMAIL' | 'DE-PAYMENT' | 'DLQ';
   type AnyObjectType = { [p: string]: any };
 
   interface DatabaseConfig {

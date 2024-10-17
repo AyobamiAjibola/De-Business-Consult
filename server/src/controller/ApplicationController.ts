@@ -17,6 +17,10 @@ import stripe from "../utils/StripeConfig";
 import { PaymentType } from "../models/Transaction";
 import rabbitMqService from "../config/RabbitMQConfig";
 import status_template from "../resources/template/email/status_template";
+import moment from 'moment-timezone';
+import archiver from "archiver";
+import path from "path";
+import fs from "fs";
 
 const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret, rabbitMqService);
 
@@ -24,6 +28,7 @@ const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
 
 const paymentType = [PaymentType.Application, PaymentType.Appointment]
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export default class ApplicationController {
 
@@ -120,6 +125,31 @@ export default class ApplicationController {
                 item = await datasources.appointmentDAOService.findById(value.itemId);
                 if (!item) {
                     return Promise.reject(CustomAPIError.response("Appointment does not exist.", HttpStatus.NOT_FOUND.code));
+                }
+
+                const appointmentTimeWithoutZ = item.time.toISOString().replace('Z', '');
+                const actualAppointmentTime = moment(appointmentTimeWithoutZ).tz(timeZone);
+                const now = moment.tz(timeZone);
+
+                // Check if the appointment time is in the past
+                if (actualAppointmentTime.isBefore(now)) {
+                    return Promise.reject(
+                        CustomAPIError.response(
+                            "Payment cannot be processed as the appointment time is in the past. Please rebook.",
+                            HttpStatus.FORBIDDEN.code
+                        )
+                    );
+                }
+
+                // Subtract one hour and check if the appointment is less than an hour away
+                const oneHourBeforeAppointment = actualAppointmentTime.clone().subtract(1, 'hour');
+                if (now.isAfter(oneHourBeforeAppointment)) {
+                    return Promise.reject(
+                        CustomAPIError.response(
+                            "Payment cannot be processed as the appointment is less than an hour away. Please rebook.",
+                            HttpStatus.BAD_REQUEST.code
+                        )
+                    );
                 }
 
                 transaction = await datasources.transactionDAOService.findByAny({ appointment: item._id });
@@ -397,19 +427,6 @@ export default class ApplicationController {
         if(user && !isAllowed)
             return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
-        // const submitted = await Application.count({
-        //     status: ApplicationStatus.Submitted
-        // });
-        // const inReview = await Application.count({
-        //     status: ApplicationStatus.InReview
-        // });
-        // const declined = await Application.count({
-        //     status: ApplicationStatus.Declined
-        // });
-        // const successful = await Application.count({
-        //     status: ApplicationStatus.Successful
-        // });
-
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: "Successful.",
@@ -479,101 +496,38 @@ export default class ApplicationController {
         return Promise.resolve(response);
     }
 
-    @TryCatch
-    public async downloadApplicationDocs (req: Request, res: Response) {
-        const applicationId = req.params.applicationId;
+    // public async downloadApplicationDocs (req: Request, res: Response) {
 
-        // const application = await datasources.applicationDAOService.findById(applicationId);
-        // if(!application)
-        //     return Promise.reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code));
-
-        // if(application.status !== ApplicationStatus.Successful)
-        //     return Promise.reject(CustomAPIError.response("Application is not successful.", HttpStatus.FORBIDDEN.code));
-
-        // res.setHeader('Content-Disposition', 'attachment; filename=test.zip');
-        // res.setHeader('Content-Type', 'application/zip');
-
-        // // res.setHeader('Content-Disposition', 'attachment; filename=test.txt');
-        // // res.setHeader('Content-Type', 'text/plain');
-        // // res.send('Hello World!');
-
-        // const archive = archiver('zip', { zlib: { level: 9 } });
-
-        // archive.on('error', (err) => {
-        //     console.error("Archive Error:", err);
-        //     res.status(500).send({ error: err.message });
-        // });
-
-        // archive.pipe(res);
-        // archive.append('Hello World!', { name: 'hello.txt' });
-
-        // await archive.finalize();
-
-        res.setHeader('Content-Disposition', 'attachment; filename=test.txt');
-        res.setHeader('Content-Type', 'text/plain');
-
-        console.log('Setting headers:', res.getHeaders());
-
-        // res.send('Hello World!');
-
-        // // Initialize the zip archive
-        // const archive = archiver('zip', { zlib: { level: 9 } }); // High compression
-        // const zipFilename = `application_${applicationId}_docs.zip`;
-
-        // // Set the headers for zip file download
-        // res.setHeader('Content-Disposition', `attachment; filename=${zipFilename}`);
-        // res.setHeader('Content-Type', 'application/zip');
-
-        // // Pipe the archive data to the response
-        // archive.pipe(res);
-        
-        // if(application.successful.length > 0) {
-        //     for (const filePath of application.successful) {
-        //         if (fs.existsSync(filePath)) {
-        //             archive.file(filePath, { name: '' });
-        //         } else {
-        //             Promise.reject(CustomAPIError.response(`File not found: ${filePath}`, HttpStatus.NOT_FOUND.code));
-        //             continue;
-        //         }
-        //     }
-        // }
-
-        // // Finalize the archive (this sends the response)
-        // await archive.finalize();
-
-    }
-    // @TryCatch
-    // public async downloadApplicationDocs(req: Request, res: Response) {
-    //     const applicationId = req.params.applicationId;
-
-    //     const application = await datasources.applicationDAOService.findById(applicationId);
-    //     if (!application) {
-    //         throw CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code);
-    //     }
-
-    //     if (application.status !== ApplicationStatus.Successful) {
-    //         throw CustomAPIError.response("Application is not successful.", HttpStatus.FORBIDDEN.code);
-    //     }
-
-    //     for (const filePath of application.successful) {
-    //         if (!fs.existsSync(filePath)) {
-    //             throw CustomAPIError.response(`File not found: ${filePath}`, HttpStatus.NOT_FOUND.code);
-    //         }
-    //     }
+    //     const filename = '02b0afab-f469-44b7-b5ef-cc6cef9da010.png';
+    //     //console.log(req.body, 'files')
+    //     const application = {
+    //         successful: [
+    //         path.join(__dirname, '../../uploads/photo', filename), // Add your file paths here
+    //         // Add more files if needed
+    //         ],
+    //     };
 
     //     const archive = archiver('zip', { zlib: { level: 9 } });
-    //     const zipFilename = `application_${applicationId}_docs.zip`;
+    //     const zipFilename = `application_${filename}_docs.zip`;
 
+    //     // Set headers for the response
     //     res.setHeader('Content-Disposition', `attachment; filename=${zipFilename}`);
     //     res.setHeader('Content-Type', 'application/zip');
 
+    //     // Pipe the archive to the response stream
     //     archive.pipe(res);
 
     //     for (const filePath of application.successful) {
-    //         archive.file(filePath, { name: '' });
+    //         if (fs.existsSync(filePath)) {
+    //             const fileNameInZip = path.basename(filePath); // Get the base file name
+    //             console.log('Adding file to zip:', filePath);
+    //             archive.file(filePath, { name: fileNameInZip });
+    //         } else {
+    //             console.error('File not found:', filePath);
+    //             res.status(404).send('File not found'); // Return 404 if the file does not exist
+    //             return; // Stop further processing
+    //         }
     //     }
-
-    //     await archive.finalize();
 
     // }
 

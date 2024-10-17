@@ -15,6 +15,8 @@ import { scheduleNotifications } from "../services/BullSchedulerService";
 import status_template from "../resources/template/email/status_template";
 import rabbitMqService from "../config/RabbitMQConfig";
 
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 export default class AppointmentController {
 
     @TryCatch
@@ -111,7 +113,7 @@ export default class AppointmentController {
         }
 
         const newAppointmentTime = new Date(value.time).getHours();
-        const newAppointmentDate = moment(value.date).format('DD/MM/YY');
+        const newAppointmentDate = moment(value.date).tz(timeZone).format('DD/MM/YY');
 
         const appointment = await datasources.appointmentDAOService.findByAny({
             email: value.email,
@@ -121,7 +123,7 @@ export default class AppointmentController {
         if (
             appointment &&
             newAppointmentTime === new Date(appointment?.time).getHours() &&
-            moment(appointment?.date).format('DD/MM/YY') === newAppointmentDate
+            moment(appointment?.date).tz(timeZone).format('DD/MM/YY') === newAppointmentDate
         ) {
             return Promise.reject(
                 CustomAPIError.response(
@@ -129,7 +131,9 @@ export default class AppointmentController {
                     HttpStatus.FORBIDDEN.code
                 )
             );
-        }
+        };
+
+        const appointmentConfig = await datasources.appointmentConfigDAOService.findByAny({ service: value.services.length })
 
         const selectedDateTime = new Date(value.date);
         const currentDateTime = new Date();
@@ -149,7 +153,6 @@ export default class AppointmentController {
         }
 
         if (selectedDateTime.toDateString() === currentDateTime.toDateString()) {
-            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             const difference = moment(value.date).tz(timeZone).diff(moment().tz(timeZone));
 
             if (difference < 0) {
@@ -179,34 +182,10 @@ export default class AppointmentController {
 
         const newAppointment = await datasources.appointmentDAOService.create(payload as IAppointmentModel);
 
-        const servicePromises = newAppointment.services.map(async (serviceId) => {
-            const service = await datasources.servicesDAOService.findById(serviceId);
-            return service?.name;
-        });
-        const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
-
-        const mail = appointment_template({
-            date: moment.utc(newAppointment.date).format('DD-MM-YYYY'),
-            time: moment.utc(newAppointment.time).format('h:mm a'),
-            services: serviceNames.join(', '),
-            appointmentId: newAppointment.appointmentId
-        });
-
-        const emailPayload = {
-            to: newAppointment.email,
-            replyTo: process.env.SMTP_EMAIL_FROM,
-            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
-            subject: `De Business Consult.`,
-            html: mail
-        }
-
-        await rabbitMqService.sendEmail({data: emailPayload});
-        await scheduleNotifications(newAppointment._id);
-        
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
             message: 'Successfully created appointment.',
-            result: newAppointment._id
+            result: {appointmentId: newAppointment._id, amount: appointmentConfig ? appointmentConfig.amount : '' }
         };
       
         return Promise.resolve(response);

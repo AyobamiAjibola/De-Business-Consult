@@ -3,6 +3,12 @@ import datasources from './dao';
 import { ITransactionModel, PaymentStatus, PaymentType } from '../models/Transaction';
 import payment_success_template from '../resources/template/email/payment_success_template';
 import rabbitMqService from "../config/RabbitMQConfig";
+import appointment_template from '../resources/template/email/appointment';
+import { AppointmentStatus } from '../models/Appointment';
+import moment from "moment-timezone";
+import { scheduleNotifications } from './BullSchedulerService';
+
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export async function processEvent(event: Stripe.Event) {
     switch (event.type) {
@@ -24,6 +30,45 @@ export async function processEvent(event: Stripe.Event) {
         case 'charge.succeeded':
             const charge = event.data.object as Stripe.Charge;
             console.log('Charge was successful!');
+
+            const { paymentType, itemId } = charge.metadata;
+
+            if(paymentType === "appointment") {
+                
+                const appointment = await datasources.appointmentDAOService.findById(itemId);
+
+                if(!appointment) return;
+
+                const servicePromises = appointment.services.map(async (serviceId) => {
+                    const service = await datasources.servicesDAOService.findById(serviceId);
+                    return service?.name;
+                });
+
+                const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
+
+                const mail = appointment_template({
+                    date: moment(appointment.date).tz(timeZone).format('DD-MM-YYYY'),
+                    time: moment(appointment.time).tz(timeZone).format('h:mm a'),
+                    services: serviceNames.join(', '),
+                    appointmentId: appointment.appointmentId
+                });
+    
+                const emailPayload = {
+                    to: appointment.email,
+                    replyTo: process.env.SMTP_EMAIL_FROM,
+                    from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+                    subject: `De Business Consult.`,
+                    html: mail
+                }
+                
+                await rabbitMqService.sendEmail({data: emailPayload});
+                await scheduleNotifications({ 
+                    appointmentTime: appointment.time, 
+                    email: appointment.email,
+                    appointmentId: appointment.appointmentId
+                });
+            }
+
             break;
 
         case 'charge.updated':

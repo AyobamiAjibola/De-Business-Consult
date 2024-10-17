@@ -45,10 +45,13 @@ export async function processEvent(event: Stripe.Event) {
                 });
 
                 const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
+                
+                const dateWithoutZ = appointment.date.toISOString().replace('Z', '');
+                const timeWithoutZ = appointment.time.toISOString().replace('Z', '');
 
                 const mail = appointment_template({
-                    date: moment(appointment.date).tz(timeZone).format('DD-MM-YYYY'),
-                    time: moment(appointment.time).tz(timeZone).format('h:mm a'),
+                    date: moment(dateWithoutZ).tz(timeZone).format('DD-MM-YYYY'),
+                    time: moment(timeWithoutZ).tz(timeZone).format('h:mm a'),
                     services: serviceNames.join(', '),
                     appointmentId: appointment.appointmentId
                 });

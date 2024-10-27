@@ -1,8 +1,25 @@
 import AdminController from "../controller/AdminController";
 import authenticateRouteWrapper from "../middleware/authenticateRouteWrapper";
 import { Request, Response } from "express";
+import PasswordEncoder from "../utils/PasswordEncoder";
 
-const adminController = new AdminController();
+const passwordEncoder = new PasswordEncoder();
+const adminController = new AdminController(passwordEncoder);
+
+export const createChatHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.createChat(req);
+    res.status(response.code).json(response);
+});
+
+export const findChatHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.findChat(req);
+    res.status(response.code).json(response);
+});
+
+export const fetchChatMessagesHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.fetchChatMessages(req);
+    res.status(response.code).json(response);
+});
 
 export const createServiceHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await adminController.createService(req);

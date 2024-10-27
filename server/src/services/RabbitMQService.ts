@@ -6,6 +6,9 @@ import { Logger } from 'winston';
 import SendMailService from './SendMailService';
 import LOG from '../config/AppLoggerConfig';
 import Joi from 'joi';
+import datasources from './dao';
+import { IChatMessageModel } from '../models/ChatMessages';
+import { STATUSES } from '../config/constants';
 
 const sendMailService = new SendMailService();
 
@@ -15,14 +18,27 @@ class RabbitMQService {
     private readonly paymentQueue: string;
     private readonly emailQueue: string;
     private readonly deadLetterQueue: string;
+    private readonly deadLetterExchangeQueue: string;
+    private readonly chatQueue: string;
+    private readonly chatSeen: string;
     private data: any | null = null;
     private readonly LOG: Logger = LOG;
     private retryLimit = 3;
 
-    constructor(paymentQueue: string, emailQueue: string, deadLetterQueue: string) {
+    constructor(
+        paymentQueue: string, 
+        emailQueue: string, 
+        deadLetterQueue: string, 
+        deadLetterExchangeQueue: string,
+        chatQueue: string,
+        chatSeen: string
+    ) {
         this.paymentQueue = paymentQueue;
         this.emailQueue = emailQueue;
         this.deadLetterQueue = deadLetterQueue;
+        this.deadLetterExchangeQueue = deadLetterExchangeQueue;
+        this.chatQueue = chatQueue;
+        this.chatSeen = chatSeen;
     }
 
     // Check if channel is initialized
@@ -43,15 +59,27 @@ class RabbitMQService {
                 this.channel.assertQueue(this.paymentQueue, { durable: true }),
                 this.channel.assertQueue(this.emailQueue, { durable: true }),
                 this.channel.assertQueue(this.deadLetterQueue, { durable: true }),
+                this.channel.assertQueue(this.deadLetterExchangeQueue, { durable: true }),
+                this.channel.assertQueue(this.chatQueue, { durable: true }),
+                this.channel.assertQueue(this.chatSeen, { durable: true })
             ]);
 
             // Prefetching to limit unacknowledged messages
             this.channel.prefetch(10); // Process max 10 messages at a time
 
-            this.LOG.info(`Connected to queues: ${this.paymentQueue}, ${this.emailQueue}, ${this.deadLetterQueue}`);
+            this.LOG.info(`Connected to queues: 
+                            ${this.paymentQueue}, 
+                            ${this.emailQueue}, 
+                            ${this.deadLetterQueue}, 
+                            ${this.deadLetterExchangeQueue},
+                            ${this.chatQueue}, 
+                            ${this.chatSeen}, 
+                        `);
 
             await this.startWorker();
             await this.consumeEmails();
+            await this.storeChatMessageConsumer();
+            await this.chatSeenConsumer();
         } catch (error) {
             this.LOG.error('Error connecting to RabbitMQ:', error);
             this.reconnect(); // Automatic reconnection in case of error
@@ -125,6 +153,18 @@ class RabbitMQService {
         }
     }
 
+    public async publishMessageToQueue(queue: string, message: any): Promise<void> {
+        this.ensureChannelInitialized();
+
+        try {
+            const messageBuffer = Buffer.from(JSON.stringify(message));
+            await this.channel?.sendToQueue(queue, messageBuffer, { persistent: true });
+            this.LOG.info(`Message sent to queue ${queue}:`, message);
+        } catch (error) {
+            this.LOG.error('Error publishing message to RabbitMQ:', error);
+        }
+    }
+
     public async sendEmail({ data }: { data: any }): Promise<void> {
         this.data = data;
         await this.produce();
@@ -184,6 +224,85 @@ class RabbitMQService {
                             this.LOG.info('Requeueing message for retry');
                             this.channel?.nack(msg, false, true); // Requeue for retry
                         }
+                    }
+                },
+                { noAck: false } // Enable manual acknowledgment
+            );
+        } catch (error) {
+            this.LOG.error('Failed to consume messages:', error);
+        }
+    }
+
+    private async storeChatMessageConsumer() {
+        this.ensureChannelInitialized();
+
+        try {
+          await this.channel?.consume(
+            this.chatQueue,
+            async (message: Message | null) => {
+                if (!message) return;
+                
+                const messageData = JSON.parse(message.content.toString());
+                const retryCount = (message.properties.headers ? message.properties.headers['x-retry-count'] : 0) || 0 + 1;
+
+                try {
+                    // Check if the message already exists in the DB (to avoid duplicates)
+                    const existingMessage = await datasources.chatMessageDAOService.findByAny({ messageId: messageData.messageId });
+                    if (!existingMessage) {
+                        await datasources.chatMessageDAOService.create({
+                            messageId: messageData.messageId,
+                            chatId: messageData.chatId,
+                            message: messageData.message,
+                            status: STATUSES.sent,
+                            senderId: messageData.senderId,
+                            fileUrl: messageData.fileUrl,
+                            fileName: messageData.fileName
+                        } as IChatMessageModel);
+                        
+                        this.channel?.ack(message); // Acknowledge success
+                    } else {
+                        // If message already exists, just acknowledge it
+                        this.channel?.ack(message);
+                    }
+
+                } catch (error) {
+                    this.LOG.error(`Failed to send chat message, retry count: ${retryCount}`, error);
+                    if (retryCount >= this.retryLimit) {
+                        this.LOG.error('Exceeded retry limit, moving message to dead-letter queue');
+                        await this.moveToDeadLetterQueue(message); // Move to DLQ
+                    } else {
+                        this.LOG.info('Requeueing message for retry');
+                        this.channel?.nack(message, false, true); // Requeue for retry
+                    }
+                }
+            },
+            { noAck: false } // Ensure messages are not removed from the queue until acknowledged
+          );
+        } catch (error) {
+            this.LOG.error('Error consuming messages:', error);
+        }
+    }
+
+    private async chatSeenConsumer(): Promise<void> {
+        this.ensureChannelInitialized();
+
+        try {
+            await this.channel?.consume(
+                this.chatSeen,
+                async (msg: Message | null) => {
+                    if (!msg) return;
+
+                    const data = JSON.parse(msg.content.toString());
+
+                    try {
+                        await datasources.chatMessageDAOService.updateMany(
+                            { chatId: data.chatId, status: { $ne: STATUSES.read } },
+                            { $set: { status: STATUSES.read } }
+                        )
+
+                        this.channel?.ack(msg); // Acknowledge success
+                    } catch (error) {
+                        this.LOG.error(`Failed to update chat messages`, error);
                     }
                 },
                 { noAck: false } // Enable manual acknowledgment

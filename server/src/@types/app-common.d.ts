@@ -27,7 +27,7 @@ export declare namespace appCommonTypes {
     driverId: string;
   };
 
-  type QueueMailTypes = 'DE-EMAIL' | 'DE-PAYMENT' | 'DLQ';
+  type QueueMailTypes = 'DE-EMAIL' | 'DE-PAYMENT' | 'DLQ' | 'DLX' | 'DE-CHAT-MESSAGE' | 'DE-CHAT-SEEN';
   type AnyObjectType = { [p: string]: any };
 
   interface DatabaseConfig {
@@ -136,6 +136,12 @@ export declare namespace appCommonTypes {
 
   interface QueueEvents {
     name: QueueMailTypes;
+  }
+
+  interface StatusTypes {
+    sent: string,
+    delivered: string,
+    read: string
   }
 
   interface MailTextConfig {

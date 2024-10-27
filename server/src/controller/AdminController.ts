@@ -24,6 +24,8 @@ import { ISubscriberModel, SubscriberStatus } from "../models/Subscriber";
 import { ITestimonialModel } from "../models/Testimonial";
 import contact_us_template from "../resources/template/email/contactUs";
 import rabbitMqService from "../config/RabbitMQConfig";
+import BcryptPasswordEncoder = appCommonTypes.BcryptPasswordEncoder;
+import { IChatModel } from "../models/ChatModel";
 
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
@@ -32,6 +34,107 @@ const newsLetterStatus = [NewsLetterStatus.Draft, NewsLetterStatus.Scheduled, Ne
 const subscriberStatus = [SubscriberStatus.Active, SubscriberStatus.Inactive]
 
 export default class AdminController {
+    private readonly passwordEncoder: BcryptPasswordEncoder | undefined;
+
+    constructor(passwordEncoder?: BcryptPasswordEncoder) {
+      this.passwordEncoder = passwordEncoder;
+    };
+
+    @TryCatch
+    public async findChat(req: Request) {
+        const userId = req.user._id;
+
+        const { error, value } = Joi.object<any>({
+            receiverId: Joi.string().optional().allow('').label('Receiver Id')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        let member = '';
+        if(!value.receiverId) {
+            const user = await datasources.userDAOService.findByAny({
+                userType: { $in: ['super-admin'] }
+            })
+            member = user?._id.toString()
+        } else {
+            member = value.receiverId
+        }
+
+        const chat = await datasources.chatDAOService.findByAny({
+            members: {$all: [userId, member]}
+        });
+    
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+            result: chat?._id
+        };
+    
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async fetchChatMessages(req: Request) {
+        const userId = req.user._id;
+
+        const { error, value } = Joi.object<any>({
+            chatId: Joi.string().required().label('Chat Id')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const chatMessages = await datasources.chatMessageDAOService.findAll({
+            // members: {$all: [userId, value.receiverId]}
+            chatId: value.chatId
+        }, {sort: { createdAt: 1 }});
+
+        const chat = await datasources.chatDAOService.findById(value.chatId);
+
+        const recipientId = chat?.members.find(id => id !== userId.toString())
+
+        const recipient = await datasources.userDAOService.findById(recipientId)
+                            ?? await datasources.clientDAOService.findById(recipientId)
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+            result: { chatMessages, recipient: {
+                fullName: `${recipient?.firstName} ${recipient?.lastName}`,
+                image: recipient?.image,
+                id: recipient?._id
+            }}
+        };
+    
+        return Promise.resolve(response);
+    }       
+
+    @TryCatch
+    public async createChat(req: Request) {
+        const userId = req.user._id;
+
+        const { error, value } = Joi.object<any>({
+            receiverId: Joi.string().required().label('Receiver Id')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const chat = await datasources.chatDAOService.findByAny({
+            members: {$all: [userId, value.receiverId]}
+        });
+
+        if(chat)
+            return Promise.reject(CustomAPIError.response("Chat already exist.", HttpStatus.BAD_REQUEST.code))
+
+        await datasources.chatDAOService.create({
+            members: [userId, value.receiverId]
+        } as IChatModel);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successfully created chat.'
+        };
+      
+        return Promise.resolve(response);
+          
+    }
 
     @TryCatch
     public async createService (req: Request) {
@@ -260,8 +363,11 @@ export default class AdminController {
         if(clientCompanyName)
             return Promise.reject(CustomAPIError.response(`Client with this company name: ${value.companyName} already exists.`, HttpStatus.NOT_FOUND.code));
 
+        const password = await this.passwordEncoder?.encode(process.env.CLIENT_PASS as string);
+
         const payload = {
             ...value,
+            password,
             companyName: value.companyName.toLowerCase()
         }
 

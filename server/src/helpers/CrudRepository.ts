@@ -1,4 +1,4 @@
-import { Model, Document, FilterQuery, UpdateQuery, QueryOptions, Types } from 'mongoose';
+import { Model, Document, FilterQuery, UpdateQuery, QueryOptions, Types, UpdateWriteOpResult, InsertManyOptions } from 'mongoose';
 import { appModelTypes } from '../@types/app-model';
 import AbstractCrudRepository = appModelTypes.AbstractCrudRepository;
 
@@ -11,7 +11,7 @@ export default class CrudRepository<M extends Document, Id extends Types.ObjectI
 
   async bulkCreate(records: ReadonlyArray<M>): Promise<Array<M>> {
     //@ts-ignore
-    return this.model.insertMany(records);
+    return await this.model.insertMany(records);
   }
 
   async save(values: M, options?: QueryOptions): Promise<M> {
@@ -89,6 +89,10 @@ export default class CrudRepository<M extends Document, Id extends Types.ObjectI
 
   async updateByAny(filter: FilterQuery<M>, update: UpdateQuery<M>, options?: QueryOptions): Promise<M | null> {
     return this.model.findOneAndUpdate(filter, update, { new: true, ...options }).exec();
+  }
+
+  async updateMany(filter: FilterQuery<M>, update: UpdateQuery<M>, options?: QueryOptions): Promise<UpdateWriteOpResult> {
+    return this.model.updateMany(filter, update, options).exec();
   }
 
   async deleteByAny(filter: FilterQuery<M>, options?: QueryOptions): Promise<void> {

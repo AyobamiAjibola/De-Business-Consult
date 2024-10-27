@@ -6,21 +6,18 @@ import CustomAPIError from "../exceptions/CustomAPIError";
 import HttpStatus from "../helpers/HttpStatus";
 import datasources from '../services/dao';
 import { UPLOAD_BASE_PATH } from "../config/constants";
-// import formidable = require("formidable");
 import formidable from "formidable";
 import Application, { ApplicationStatus, IApplicationModel } from "../models/Application";
 import Generic from "../utils/Generic";
-import { Request, Response } from "express";
+import { Request } from "express";
 import StripeWebhookService from "../services/StripeWebhookService";
 import settings from "../config/settings";
-import stripe from "../utils/StripeConfig";
+import stripe from "../config/StripeConfig";
 import { PaymentType } from "../models/Transaction";
 import rabbitMqService from "../config/RabbitMQConfig";
 import status_template from "../resources/template/email/status_template";
 import moment from 'moment-timezone';
-import archiver from "archiver";
-import path from "path";
-import fs from "fs";
+import { IChatModel } from "../models/ChatModel";
 
 const webhookService = new StripeWebhookService(settings.stripe.web_hook_secret, rabbitMqService);
 
@@ -430,7 +427,7 @@ export default class ApplicationController {
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: "Successful.",
-            result: applications,
+            results: applications,
           };
       
         return Promise.resolve(response);
@@ -556,6 +553,19 @@ export default class ApplicationController {
         return Promise.resolve(response);
     };
 
+    @TryCatch
+    public async uploadReviewDocs (req: Request) {
+        const file = await this.doUploadReviewDocs(req);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.CREATED.code,
+            message: 'Successfully uploaded document.',
+            result: file
+        };
+      
+        return Promise.resolve(response);
+    };
+
     private async doCreateApplication(req: Request): Promise<HttpResponse<IApplicationModel>> {
         return new Promise((resolve, reject) => {
 
@@ -608,12 +618,19 @@ export default class ApplicationController {
                 }).validate(serviceBody);
                 if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
-                const [client] = await Promise.all([
-                    datasources.clientDAOService.findById(loggedInClient)
+                const [client, user] = await Promise.all([
+                    datasources.clientDAOService.findById(loggedInClient),
+                    datasources.userDAOService.findByAny({
+                        userType: { $in: ['super-admin'] }
+                    })
                 ]);
 
                 if(!client)
                     return reject(CustomAPIError.response("Not found", HttpStatus.NOT_FOUND.code));
+
+                const chat = await datasources.chatDAOService.findByAny({
+                    members: {$all: [client._id, user?._id]}
+                });
 
                 if(value.services.length === 0)
                     return reject(CustomAPIError.response("Services cannot be empty.", HttpStatus.BAD_REQUEST.code));
@@ -646,21 +663,6 @@ export default class ApplicationController {
                         processedFiles.push(result);
 
                     }
-                    // for (const key of Object.keys(serviceFiles)) {
-                        // const serviceFile = serviceFiles[key] as formidable.File;
-
-                    //     const applicationFiles = `${UPLOAD_BASE_PATH}/applications`;
-
-                    //     const [{ result, error }] = await Promise.all([
-                    //         Generic.handleFiles(serviceFile as unknown as File, applicationFiles)
-                    //     ]);
-
-                    //     if (error) {
-                    //         return reject(CustomAPIError.response(error as string, HttpStatus.BAD_REQUEST.code));
-                    //     }
-                    
-                    //     processedFiles.push(result);
-                    // }
                     
                     serviceFee += service.cost;
                     docsLength += processedFiles.length;
@@ -684,6 +686,12 @@ export default class ApplicationController {
                 };
 
                 const application: any = await datasources.applicationDAOService.create(payload as IApplicationModel);
+
+                if(!chat) {
+                    await datasources.chatDAOService.create({
+                        members: [client._id, user?._id]
+                    } as IChatModel);
+                }
 
                 return resolve({applicationId: application._id} as any)
 
@@ -723,7 +731,7 @@ export default class ApplicationController {
                 return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
             if(!application)
-                return reject(CustomAPIError.response("Client does not exist.", HttpStatus.NOT_FOUND.code));
+                return reject(CustomAPIError.response("Application does not exist.", HttpStatus.NOT_FOUND.code));
 
             let successApplicationFiles = [];
             for (const key of Object.keys(files)) {
@@ -749,6 +757,46 @@ export default class ApplicationController {
     
             //@ts-ignore
             return resolve('result');
+          });
+        });
+    };
+
+    private async doUploadReviewDocs(
+        req: Request
+      ): Promise<HttpResponse<IApplicationModel>> {
+        return new Promise((resolve, reject) => {
+          form.parse(req, async (err, fields, files) => {
+            const chatId = req.params.chatId;
+    
+            const { error, value } = Joi.object<any>({
+              applicationFile: Joi.string().label("Files"),
+            }).validate(fields);
+    
+            if (error) {
+              return reject(
+                CustomAPIError.response(
+                  error.details[0].message,
+                  HttpStatus.BAD_REQUEST.code
+                )
+              );
+            }
+    
+            const [chat] = await Promise.all([
+                datasources.chatDAOService.findById(chatId)
+            ]);
+
+            if(!chat)
+                return reject(CustomAPIError.response("Chat does not exist.", HttpStatus.NOT_FOUND.code));
+
+            const basePath = `${UPLOAD_BASE_PATH}/photo`;
+
+            const { result: _file, error: fileError } = await Generic.handleFiles(files.applicationFile as unknown as File, basePath);
+            if (fileError) {
+                return reject(CustomAPIError.response(fileError, HttpStatus.BAD_REQUEST.code));
+            }
+    
+            //@ts-ignore
+            return resolve(_file);
           });
         });
     }

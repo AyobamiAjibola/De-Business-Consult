@@ -2,20 +2,22 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 interface IChatMessage {
     chatId: string,
-    senderId: string;
-    receiverId: string;
-    senderStatus: string;
-    receiverStatus: string;
+    messageId: string,
+    status: string;
     message: string;
+    senderId: string;
+    fileUrl: string;
+    fileName: string;
 };
 
 const chatMessageSchema = new Schema<IChatMessage>({
-    senderId: { type: String },
-    receiverId: { type: String },
+    messageId: { type: String, unique: true },
     chatId: { type: String },
-    senderStatus: { type: String, default: 'unread' },
-    receiverStatus: { type: String, default: 'unread' },
-    message: { type: String }
+    status: { type: String },
+    message: { type: String },
+    senderId: { type: String },
+    fileUrl: { type: String },
+    fileName: { type: String }
 },{timestamps: true});
 
 export interface IChatMessageModel extends Document, IChatMessage {}

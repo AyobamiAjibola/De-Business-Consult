@@ -2,9 +2,23 @@ import { Server, Socket } from 'socket.io';
 import { corsOptions } from '../app';
 import AppLogger from '../utils/AppLogger';
 import datasources from './dao';
-import { IChatMessageModel } from '../models/ChatMessages';
+import rabbitMqService from '../config/RabbitMQConfig';
+import { QUEUE_EVENTS_CHAT, QUEUE_EVENTS_CHAT_SEEN, STATUSES } from '../config/constants';
+import { randomUUID } from 'crypto';
 
 const logger = AppLogger.init('server').logger;
+
+interface SenderProps {
+  senderId: string,
+  fullName: string,
+  image: string
+}
+
+interface ReceiverProps {
+  receiverId: string,
+  fullName: string,
+  image: string
+}
 
 class SocketService {
   private io: Server<any, any, any, any> | null;
@@ -17,25 +31,42 @@ class SocketService {
 
   // Send a message to a user using Socket.IO
   async sendMessageToUser(
-    senderId: any,
-    receiverId: any,
+    senderId: string,
+    receiverId: string,
     message: string,
-    chatId: string
+    chatId: string,
+    fileUrl: string,
+    fileName: string,
   ) {
-    const response = await datasources.chatMessageDAOService.create({
+    const messageId = randomUUID();
+    const payload = {
+      messageId,
       chatId,
-      senderId,
-      receiverId,
       message,
-    } as IChatMessageModel);
+      senderId,
+      fileUrl,
+      fileName
+    };
+  
+    try {
+      await rabbitMqService.publishMessageToQueue(QUEUE_EVENTS_CHAT.name, payload);
+  
+      const targetSocketRooms = this.io?.sockets.adapter.rooms.get(receiverId);
+      if (targetSocketRooms) {
+        this.io?.to(receiverId).emit('receivePrivateMessage', {
+          chatId,
+          senderId,
+          message,
+          fileUrl,
+          fileName
+        });
 
-    this.io?.to(senderId).emit('messageSentAck', { chatId });
-
-    const targetSocketRooms = this.io?.sockets.adapter.rooms.get(receiverId);
-    if (targetSocketRooms) {
-      this.io?.to(receiverId).emit('receivePrivateMessage', { chatId, senderId, message });
-    } else {
-      console.log('Receiver not online.');
+      } else {
+        console.log('Receiver not online. Message will remain in queue.');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Handle any errors (e.g., logging or retry mechanism).
     }
   }
 
@@ -65,22 +96,41 @@ class SocketService {
         socket.emit('getOnlineUsers', this.onlineUsers);
       });
 
-      socket.on('sendPrivateMessage', (data: any) => {
-        const { senderId, receiverId, message, chatId } = data;
-        this.sendMessageToUser(senderId, receiverId, message, chatId);
+      socket.on('sendPrivateMessage', async (data: any) => {
+        const { senderId, receiverId, message, chatId, fileUrl, fileName } = data;
+        await this.sendMessageToUser(
+            senderId, receiverId, 
+            message, chatId, 
+            fileUrl, fileName );
       });
 
-      socket.on('userTypingMsg', (data: any) => {
-        const targetSocketRoom = this.io?.sockets.adapter.rooms.get(data.receiver);
+      socket.on('userTyping', (data: any) => {
+        const { senderId, receiverId } = data;
+      
+        const targetSocketRoom = this.io?.sockets.adapter.rooms.get(receiverId);
         if (targetSocketRoom) {
-          this.io?.to(data.receiver).emit('userTypingMsgAck', data.message);
+          this.io?.to(receiverId).emit('userTypingAck', { senderId });
         }
       });
 
-      socket.on('userNotTypingMsg', (data: any) => {
-        const targetSocketRoom = this.io?.sockets.adapter.rooms.get(data.receiver);
+      socket.on('userStoppedTyping', (data: any) => {
+        const { senderId, receiverId } = data;
+        const targetSocketRoom = this.io?.sockets.adapter.rooms.get(receiverId);
         if (targetSocketRoom) {
-          this.io?.to(data.receiver).emit('userNotTypingMsgAck', data.message);
+          this.io?.to(receiverId).emit('userStoppedTypingAck', { senderId });
+        }
+      });
+
+      socket.on('messageSeen', async (data: any) => {
+        const { chatId, userId } = data;
+
+        // Update the message status in the database
+        await rabbitMqService.publishMessageToQueue(QUEUE_EVENTS_CHAT_SEEN.name, { chatId })
+      
+        // Emit acknowledgment to the sender if needed
+        const senderSocketRooms = this.io?.sockets.adapter.rooms.get(data.senderId);
+        if (senderSocketRooms) {
+          this.io?.to(data.senderId).emit('messageReadAck', { chatId, userId });
         }
       });
 

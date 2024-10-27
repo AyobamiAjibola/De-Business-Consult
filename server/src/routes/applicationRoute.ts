@@ -87,3 +87,9 @@ export const uploadSuccessfulDocsHandler = authenticateRouteWrapper(async (req, 
 
     res.status(response.code).json(response);
 });
+
+export const uploadReviewDocsHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await applicationController.uploadReviewDocs(req);
+
+    res.status(response.code).json(response);
+});

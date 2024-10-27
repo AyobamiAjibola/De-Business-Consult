@@ -13,6 +13,7 @@ import {
     getSingleTransactionHandler, 
     paymentCheckoutHandler,
     paymentIntentHandler,
+    uploadReviewDocsHandler,
     uploadSuccessfulDocsHandler
 } from '../../routes/applicationRoute';
 
@@ -95,6 +96,12 @@ const applicationEndpoints: RouteEndpoint  = [
         path: '/upload-application-docs/:applicationId',
         handler: uploadSuccessfulDocsHandler
     },
+    {
+        name: 'upload review application docs',
+        method: 'put',
+        path: '/upload-review-application-docs/:chatId',
+        handler: uploadReviewDocsHandler
+    }
 ]
 
 export default applicationEndpoints;

@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import Stripe from 'stripe';
-import stripe from '../utils/StripeConfig';
+import stripe from '../config/StripeConfig';
 import RabbitMQService from './RabbitMQService';
 
 class StripeWebhookService {

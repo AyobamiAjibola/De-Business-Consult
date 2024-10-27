@@ -86,6 +86,51 @@ app.post('/api/v1/download', async (req: Request, res: Response) => {
   }
 });
 
+app.post('/api/v1/download-chat-file', async (req: Request, res: Response) => {
+  const { fileUrl } = req.body;
+  const fileUrls = [fileUrl.split('photo/')[1]];
+  console.log(fileUrls, 'url')
+  const filePaths = fileUrls.map(fileUrl => path.join(__dirname, '../uploads/photo', fileUrl));
+  
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  const zipFilename = `application_docs.zip`;
+
+  // Set headers for the response
+  res.setHeader('Content-Disposition', `attachment; filename=${zipFilename}`);
+  res.setHeader('Content-Type', 'application/zip');
+
+  // Pipe the archive to the response stream
+  archive.pipe(res);
+
+  // Check each file path
+  for (const filePath of filePaths) {
+    if (fs.existsSync(filePath)) {
+      const fileNameInZip = path.basename(filePath); // Get the base file name
+      console.log('Adding file to zip:', filePath);
+      archive.file(filePath, { name: fileNameInZip });
+    } else {
+      console.error('File not found:', filePath);
+      return res.status(404).send('File not found'); // Return 404 if the file does not exist
+    }
+  }
+
+  // Finalize the archive (this finishes the stream)
+  archive.on('error', (error) => {
+    console.error('Error during archiving:', error);
+    res.status(500).send('Error creating zip file');
+  });
+
+  archive.finalize().then(() => {
+    console.log('Archive created successfully');
+  });
+
+  // Close the response stream when the archiving is complete
+  archive.on('finish', () => {
+    console.log('Zip file has been sent successfully.');
+    res.end(); // End the response when done
+  });
+});
+
 app.use(`${settings.service.apiRoot}`, router); // All routes middleware
 
 app.use(globalExceptionHandler);

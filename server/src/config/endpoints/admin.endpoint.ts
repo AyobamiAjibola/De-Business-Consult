@@ -9,6 +9,7 @@ import {
     createAuthorHandler,
     createBlogCategoryHandler,
     createBlogHandler,
+    createChatHandler,
     createClientHandler,
     createDeDocsHandler,
     createNewsLetterHandler,
@@ -28,6 +29,8 @@ import {
     fetchBlogCategoriesHandler, 
     fetchBlogCommentsHandler, 
     fetchBlogsHandler, 
+    findChatHandler, 
+    fetchChatMessagesHandler, 
     fetchNewslettersHandler, 
     fetchServicesHandler, 
     fetchSubscribersHandler, 
@@ -367,6 +370,24 @@ const adminEndpoints: RouteEndpoint  = [
         method: 'post',
         path: '/contact-us-form',
         handler: contactUsFormHandler
+    },
+    {
+        name: 'create chat',
+        method: 'post',
+        path: '/create-chat',
+        handler: createChatHandler
+    },
+    {
+        name: 'find chat',
+        method: 'post',
+        path: '/find-chat',
+        handler: findChatHandler
+    },
+    {
+        name: 'fetch chat messages',
+        method: 'post',
+        path: '/fetch-chat-messages',
+        handler: fetchChatMessagesHandler
     },
 ]
 

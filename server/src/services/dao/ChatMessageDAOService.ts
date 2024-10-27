@@ -1,4 +1,4 @@
-import { FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
+import { FilterQuery, UpdateQuery, QueryOptions, UpdateWriteOpResult } from 'mongoose';
 import {IChatMessageModel} from '../../models/ChatMessages';
 import ChatMessageRepository from '../../repositories/ChatMessageRepository';
 
@@ -51,6 +51,14 @@ export default class ChatMessageDAOService implements ICrudDAO<IChatMessageModel
     options?: QueryOptions
   ): Promise<IChatMessageModel | null> {
     return this.chatMessageRepository.updateByAny(filter, update, options)
+  }
+
+  updateMany(
+    filter: FilterQuery<IChatMessageModel>, 
+    update: UpdateQuery<IChatMessageModel>, 
+    options?: QueryOptions): Promise<UpdateWriteOpResult> 
+  {
+    return this.chatMessageRepository.updateMany(filter, update, options)
   }
 
   deleteByAny(filter: FilterQuery<IChatMessageModel>, options?: QueryOptions): Promise<void> {

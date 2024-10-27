@@ -1,5 +1,6 @@
 import { appCommonTypes } from '../@types/app-common';
 import QueueEvents = appCommonTypes.QueueEvents;
+import StatusTypes = appCommonTypes.StatusTypes;
 
   export const MESSAGES = {
     http: {
@@ -50,6 +51,23 @@ import QueueEvents = appCommonTypes.QueueEvents;
     name: 'DLQ'
   };
 
+  export const DEAD_LETTER_EXCHANGE: QueueEvents = {
+    name: 'DLX'
+  };
+
+  export const QUEUE_EVENTS_CHAT: QueueEvents = {
+    name: 'DE-CHAT-MESSAGE'
+  };
+
+  export const QUEUE_EVENTS_CHAT_SEEN : QueueEvents = {
+    name: 'DE-CHAT-SEEN'
+  };
+
+  export const STATUSES: StatusTypes = {
+    sent: 'sent',
+    delivered: 'delivered',
+    read: 'read'
+  }
 
   export const AGENDA_COLLECTION_NAME = 'cron_jobs';
   export const AGENDA_SCHEDULE_NAME = 'scheduled_jobs';

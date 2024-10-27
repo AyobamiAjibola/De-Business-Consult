@@ -17,6 +17,7 @@ import * as Jimp from 'jimp';
 import { ALLOWED_FILE_TYPES, ALLOWED_FILE_TYPES2, IMAGE_SIZE, MAX_SIZE_IN_BYTE_VID, MESSAGES } from '../config/constants';
 import { UserType } from "../models/User";
 import { resolve } from "path";
+import { randomUUID } from "node:crypto";
 
 interface IGetImagePath {
   basePath: string;
@@ -192,6 +193,11 @@ export default class Generic {
         result += randomNumber.toString();
     }
     return result;
+  }
+
+  public static async uniqueUUID(length: number) {
+    const uuids = Array.from({ length: length }, () => randomUUID());
+    return uuids;
   }
 
   public static async removeImage(image: any, pathToRemoveFrm: string) {

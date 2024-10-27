@@ -1,11 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 interface IChat {
-    members: string[]
+    members: string[],
+    files: string[],
 }
 
 const chatSchema = new Schema<IChat>({
-    members: [{ type: String }]
+    members: [{ type: String }],
+    files: [{ type: String }]
 },{ timestamps: true });
 
 export interface IChatModel extends Document, IChat {}

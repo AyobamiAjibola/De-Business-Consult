@@ -1,62 +1,6 @@
-import { Document, FilterQuery, Model, QueryOptions, UpdateQuery } from 'mongoose';
+import { Document, FilterQuery, Model, QueryOptions, UpdateQuery, UpdateWriteOpResult } from 'mongoose';
 
 export declare namespace appModelTypes {
-  interface IRestaurant {
-    _id?: string;
-    email: string;
-    bussinessNumber: string;
-    restaurantName: string;
-    password: string;
-    tagline: string | null;
-    urlSlug: string | null;
-    loginToken: string | null;
-    loginDate: Date | null;
-    passwordResetCode: string;
-    logo: string | null;
-    restaurantAddress: string;
-    whatsappNumber: string;
-    socialMedia: {
-      instagram: string,
-      facebook: string
-    } | null;
-    location: {
-      type: "Point",
-      coordinates: [number, number]
-    },
-    photos: string[],
-    menu: IMenu[],
-  }
-
-  interface IPermission {
-    id: number;
-    name: string;
-    action: string;
-    subject: string;
-    inverted: boolean;
-    roles: IRole[];
-    createdAt: Date;
-    updatedAt: Date;
-  }
-
-  interface IVariant {
-    _id?: string,
-    unit: string,
-    price: string,
-    variantUnitFactor?: string,
-    discountPrice?: string
-  }
-
-  interface IRole {
-    id: number;
-    name: string;
-    slug: string;
-    permissions: IPermission[];
-    users: IUser[];
-    createdAt: Date;
-    updatedAt: Date;
-  }
-
-
     abstract class AbstractCrudRepository<M extends Document = Document, Id extends any = any> {
     // model?: string;
 
@@ -67,7 +11,6 @@ export declare namespace appModelTypes {
      * @desc
      * Create models passed as arrays, at once..
      * This method calls the insertMany method in mongoose.
-     * Pass optional config, to control the query outcome
      */
      bulkCreate(records: ReadonlyArray<M>): Promise<M[]>;
 
@@ -135,6 +78,19 @@ export declare namespace appModelTypes {
     updateByAny(filter: FilterQuery<M>, update: UpdateQuery<M>, options?: QueryOptions): Promise<M | null>;
 
     /**
+     * @name bulkUpdate
+     * @param records
+     * @param filter
+     * @param update
+     * @param options
+     * @desc
+     * Update models passed as arrays, at once..
+     * This method calls the updateMany method in mongoose.
+     * Pass optional config, to control the query outcome
+     */
+    updateMany(records: ReadonlyArray<M>, update: UpdateQuery<M>, options?: QueryOptions): Promise<UpdateWriteOpResult>;
+
+    /**
      * @name deleteByAny
      * @param filter
      * @param options
@@ -194,6 +150,8 @@ export declare namespace appModelTypes {
     update(update: UpdateQuery<M>, options?: QueryOptions): Promise<M | null>;
 
     updateByAny(filter: FilterQuery<M>, update: UpdateQuery<M>, options?: QueryOptions): Promise<M | null>;
+
+    updateMany(records: ReadonlyArray<M>, update: UpdateQuery<M>, options?: QueryOptions): Promise<UpdateWriteOpResult>;
 
     deleteByAny(filter: FilterQuery<M>, options?: QueryOptions): Promise<void>;
 

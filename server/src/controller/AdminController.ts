@@ -1264,6 +1264,34 @@ export default class AdminController {
     }
 
     @TryCatch
+    public async toggleTestimonialStatus(req: Request) {
+        const testimonialId = req.params.testimonialId;
+        const loggedInUser = req.user._id;
+
+        const [user, testimonial] = await Promise.all([
+            datasources.userDAOService.findById(loggedInUser),
+            datasources.testimonialDAOService.findById(testimonialId)
+        ]);
+
+        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+        if(user && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code)); 
+
+        if(!testimonial)
+            return Promise.reject(CustomAPIError.response("Testimonial does not exist.", HttpStatus.NOT_FOUND.code));
+
+        await datasources.testimonialDAOService.updateByAny({ _id: testimonial._id }, { status: !testimonial.status });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.'
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     public async updateTestimonial(req: Request) {
         const testimonialId = req.params.testimonialId;
 
@@ -1314,9 +1342,32 @@ export default class AdminController {
     }
 
     @TryCatch
-    public async fetchTestimonials(req: Request) {
+    public async fetchTestimonialsAdmin(req: Request) {
+        const loggedInUser = req.user._id;
 
-        const testimonials = await datasources.testimonialDAOService.findAll({});
+        const [user, testimonials] = await Promise.all([
+            datasources.userDAOService.findById(loggedInUser),
+            datasources.testimonialDAOService.findAll({})
+        ]);
+
+        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+        if(user && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code)); 
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+            results: testimonials
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async fetchTestimonialsClient(req: Request) {
+
+        const testimonials = await datasources.testimonialDAOService.findAll({ status: true });
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,

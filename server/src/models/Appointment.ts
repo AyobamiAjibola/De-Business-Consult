@@ -8,7 +8,7 @@ export enum AppointmentStatus {
 }
 
 interface IAppointment {
-    services: mongoose.Types.ObjectId[],
+    service: mongoose.Types.ObjectId,
     date: Date,
     time: Date,
     status: AppointmentStatus,
@@ -25,7 +25,7 @@ interface IAppointment {
 };
 
 const appointmentSchema = new Schema<IAppointment>({
-    services: [{ type: Schema.Types.ObjectId, ref: 'Services' }],
+    service: { type: Schema.Types.ObjectId, ref: 'Service' },
     date: { type: Date },
     time: { type: Date },
     status: {

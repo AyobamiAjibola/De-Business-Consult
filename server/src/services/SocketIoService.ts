@@ -29,7 +29,6 @@ class SocketService {
     this.onlineUsers = [];
   }
 
-  // Send a message to a user using Socket.IO
   async sendMessageToUser(
     senderId: string,
     receiverId: string,

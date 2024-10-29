@@ -6,8 +6,8 @@ interface IChatMessage {
     status: string;
     message: string;
     senderId: string;
-    fileUrl: string;
-    fileName: string;
+    fileUrl: string[];
+    fileName: string[];
 };
 
 const chatMessageSchema = new Schema<IChatMessage>({
@@ -16,8 +16,8 @@ const chatMessageSchema = new Schema<IChatMessage>({
     status: { type: String },
     message: { type: String },
     senderId: { type: String },
-    fileUrl: { type: String },
-    fileName: { type: String }
+    fileUrl: [{ type: String }],
+    fileName: [{ type: String }]
 },{timestamps: true});
 
 export interface IChatMessageModel extends Document, IChatMessage {}

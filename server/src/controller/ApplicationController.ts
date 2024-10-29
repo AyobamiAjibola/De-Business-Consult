@@ -77,6 +77,7 @@ export default class ApplicationController {
     }
 
     public async paymentIntent(req: Request) {
+        const loggedInUser = req.user._id;
 
         const { error, value } = Joi.object<any>({
             amount: Joi.number().optional().label("Service Amount"),
@@ -92,6 +93,10 @@ export default class ApplicationController {
                 HttpStatus.BAD_REQUEST.code
               )
             );
+
+        const client = await datasources.clientDAOService.findById(loggedInUser);
+        if(!client)
+            return Promise.reject(CustomAPIError.response("User does not exist", HttpStatus.NOT_FOUND.code));
 
         if(!paymentType.includes(value.paymentType)) 
             return Promise.reject(CustomAPIError.response(`Payment type provided is invalid.`, HttpStatus.NOT_FOUND.code))
@@ -178,7 +183,8 @@ export default class ApplicationController {
                     itemId: item._id.toString(),
                     paymentType: value.paymentType,
                     recipientEmail: value.email,
-                    itemNo
+                    itemNo,
+                    client: client._id.toString()
                 }
             });
             
@@ -555,12 +561,12 @@ export default class ApplicationController {
 
     @TryCatch
     public async uploadReviewDocs (req: Request) {
-        const file = await this.doUploadReviewDocs(req);
+        const files = await this.doUploadReviewDocs(req);
 
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
             message: 'Successfully uploaded document.',
-            result: file
+            result: files
         };
       
         return Promise.resolve(response);
@@ -769,7 +775,8 @@ export default class ApplicationController {
             const chatId = req.params.chatId;
     
             const { error, value } = Joi.object<any>({
-              applicationFile: Joi.string().label("Files"),
+            //   applicationFile: Joi.string().label("Files"),
+                applicationFiles: Joi.array().items(Joi.any()).label("Files")
             }).validate(fields);
     
             if (error) {
@@ -788,15 +795,30 @@ export default class ApplicationController {
             if(!chat)
                 return reject(CustomAPIError.response("Chat does not exist.", HttpStatus.NOT_FOUND.code));
 
-            const basePath = `${UPLOAD_BASE_PATH}/photo`;
+            // const basePath = `${UPLOAD_BASE_PATH}/photo`;
 
-            const { result: _file, error: fileError } = await Generic.handleFiles(files.applicationFile as unknown as File, basePath);
-            if (fileError) {
-                return reject(CustomAPIError.response(fileError, HttpStatus.BAD_REQUEST.code));
+            // const { result: _file, error: fileError } = await Generic.handleFiles(files.applicationFile as unknown as File, basePath);
+            // if (fileError) {
+            //     return reject(CustomAPIError.response(fileError, HttpStatus.BAD_REQUEST.code));
+            // }
+
+            let successApplicationFiles = [];
+            for (const key of Object.keys(files)) {
+                const serviceFile = files[key] as formidable.File;
+
+                const applicationFiles = `${UPLOAD_BASE_PATH}/photo`;
+
+                const [{ result, error }] = await Promise.all([
+                    Generic.handleFiles(serviceFile as unknown as File, applicationFiles)
+                ]);
+
+                if (error) continue;
+    
+              successApplicationFiles.push(result);
             }
     
             //@ts-ignore
-            return resolve(_file);
+            return resolve(successApplicationFiles);
           });
         });
     }

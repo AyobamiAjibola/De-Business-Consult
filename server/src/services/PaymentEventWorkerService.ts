@@ -30,8 +30,8 @@ export async function processEvent(event: Stripe.Event) {
         case 'charge.succeeded':
             const charge = event.data.object as Stripe.Charge;
             console.log('Charge was successful!');
-
-            const { paymentType, itemId } = charge.metadata;
+            
+            const { paymentType, itemId, client } = charge.metadata;
 
             if(paymentType === "appointment") {
                 
@@ -39,12 +39,14 @@ export async function processEvent(event: Stripe.Event) {
 
                 if(!appointment) return;
 
-                const servicePromises = appointment.services.map(async (serviceId) => {
-                    const service = await datasources.servicesDAOService.findById(serviceId);
-                    return service?.name;
-                });
+                // const servicePromises = appointment.services.map(async (serviceId) => {
+                //     const service = await datasources.servicesDAOService.findById(serviceId);
+                //     return service?.name;
+                // });
 
-                const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
+                // const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
+
+                const service = await datasources.servicesDAOService.findById(appointment.service);
                 
                 const dateWithoutZ = appointment.date.toISOString().replace('Z', '');
                 const timeWithoutZ = appointment.time.toISOString().replace('Z', '');
@@ -52,7 +54,7 @@ export async function processEvent(event: Stripe.Event) {
                 const mail = appointment_template({
                     date: moment(dateWithoutZ).tz(timeZone).format('DD-MM-YYYY'),
                     time: moment(timeWithoutZ).tz(timeZone).format('h:mm a'),
-                    services: serviceNames.join(', '),
+                    services: service?.name,
                     appointmentId: appointment.appointmentId
                 });
     
@@ -70,6 +72,8 @@ export async function processEvent(event: Stripe.Event) {
                     email: appointment.email,
                     appointmentId: appointment.appointmentId
                 });
+            } else {
+                await datasources.clientDAOService.updateByAny({ _id: client }, { isClient: true })
             }
 
             break;

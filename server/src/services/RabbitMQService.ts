@@ -18,7 +18,6 @@ class RabbitMQService {
     private readonly paymentQueue: string;
     private readonly emailQueue: string;
     private readonly deadLetterQueue: string;
-    private readonly deadLetterExchangeQueue: string;
     private readonly chatQueue: string;
     private readonly chatSeen: string;
     private data: any | null = null;
@@ -28,15 +27,13 @@ class RabbitMQService {
     constructor(
         paymentQueue: string, 
         emailQueue: string, 
-        deadLetterQueue: string, 
-        deadLetterExchangeQueue: string,
+        deadLetterQueue: string,
         chatQueue: string,
         chatSeen: string
     ) {
         this.paymentQueue = paymentQueue;
         this.emailQueue = emailQueue;
         this.deadLetterQueue = deadLetterQueue;
-        this.deadLetterExchangeQueue = deadLetterExchangeQueue;
         this.chatQueue = chatQueue;
         this.chatSeen = chatSeen;
     }
@@ -59,7 +56,6 @@ class RabbitMQService {
                 this.channel.assertQueue(this.paymentQueue, { durable: true }),
                 this.channel.assertQueue(this.emailQueue, { durable: true }),
                 this.channel.assertQueue(this.deadLetterQueue, { durable: true }),
-                this.channel.assertQueue(this.deadLetterExchangeQueue, { durable: true }),
                 this.channel.assertQueue(this.chatQueue, { durable: true }),
                 this.channel.assertQueue(this.chatSeen, { durable: true })
             ]);
@@ -70,8 +66,7 @@ class RabbitMQService {
             this.LOG.info(`Connected to queues: 
                             ${this.paymentQueue}, 
                             ${this.emailQueue}, 
-                            ${this.deadLetterQueue}, 
-                            ${this.deadLetterExchangeQueue},
+                            ${this.deadLetterQueue},
                             ${this.chatQueue}, 
                             ${this.chatSeen}, 
                         `);
@@ -141,25 +136,13 @@ class RabbitMQService {
         });
     }
 
-    async publishMessage(message: any): Promise<void> {
-        this.ensureChannelInitialized();
-
-        try {
-            const messageBuffer = Buffer.from(JSON.stringify(message));
-            await this.channel?.sendToQueue(this.paymentQueue, messageBuffer, { persistent: true });
-            this.LOG.info(`Message sent to queue ${this.paymentQueue}:`, message);
-        } catch (error) {
-            this.LOG.error('Error publishing message to RabbitMQ:', error);
-        }
-    }
-
     public async publishMessageToQueue(queue: string, message: any): Promise<void> {
         this.ensureChannelInitialized();
 
         try {
             const messageBuffer = Buffer.from(JSON.stringify(message));
             await this.channel?.sendToQueue(queue, messageBuffer, { persistent: true });
-            this.LOG.info(`Message sent to queue ${queue}:`, message);
+            this.LOG.info(`Message sent to queue ${queue}`);
         } catch (error) {
             this.LOG.error('Error publishing message to RabbitMQ:', error);
         }

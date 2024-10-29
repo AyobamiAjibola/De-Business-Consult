@@ -2,6 +2,7 @@ import { Request } from 'express';
 import Stripe from 'stripe';
 import stripe from '../config/StripeConfig';
 import RabbitMQService from './RabbitMQService';
+import { QUEUE_EVENTS_PAYMENT } from '../config/constants';
 
 class StripeWebhookService {
     private endpointSecret: string;
@@ -32,7 +33,7 @@ class StripeWebhookService {
     
     public async handleEvent(event: Stripe.Event): Promise<{ status: string; message: string }> {
         try {
-            await this.rabbitMQService.publishMessage(event)
+            await this.rabbitMQService.publishMessageToQueue(QUEUE_EVENTS_PAYMENT.name, event)
             return { status: 'success', message: 'Event published to RabbitMQ for processing' };
         } catch (error) {
             console.error('Error publishing to RabbitMQ:', error);

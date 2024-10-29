@@ -246,6 +246,11 @@ export const createTestimonialHandler = authenticateRouteWrapper(async (req, res
     res.status(response.code).json(response);
 });
 
+export const toggleTestimonialStatusHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.toggleTestimonialStatus(req);
+    res.status(response.code).json(response);
+});
+
 export const updateTestimonialHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await adminController.updateTestimonial(req);
     res.status(response.code).json(response);
@@ -256,8 +261,13 @@ export const getSingleTestimonialHandler = async (req: Request, res: Response) =
     res.status(response.code).json(response);
 };
 
-export const fetchTestimonialsHandler = async (req: Request, res: Response) =>  {
-    const response = await adminController.fetchTestimonials(req);
+export const fetchTestimonialsAdminHandler = authenticateRouteWrapper( async (req, res) =>  {
+    const response = await adminController.fetchTestimonialsAdmin(req);
+    res.status(response.code).json(response);
+});
+
+export const fetchTestimonialsClientHandler = async (req: Request, res: Response) =>  {
+    const response = await adminController.fetchTestimonialsClient(req);
     res.status(response.code).json(response);
 };
 

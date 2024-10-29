@@ -86,8 +86,7 @@ export default class AppointmentController {
     @TryCatch
     public async createAppointment (req: Request) {
         const { error, value } = Joi.object<any>({
-            services: Joi.array()
-                .items(Joi.string()).required().label("Services"),
+            service: Joi.string().required().label("Services"),
             date: Joi.date().required().label('Appointment date'),
             time: Joi.date().required().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
@@ -170,7 +169,7 @@ export default class AppointmentController {
             status: AppointmentStatus.Pending,
             date: value.date,
             time: value.time,
-            services: value.services,
+            service: value.service,
             appointmentId: `#${id}`,
             additionalInfo: value.additionalInfo,
             client: client ? client._id : null,
@@ -195,8 +194,7 @@ export default class AppointmentController {
     public async updateAppointment (req: Request) {
         const appointmentId = req.params.appointmentId;
         const { error, value } = Joi.object<any>({
-            services: Joi.array()
-                .items(Joi.string()).optional().label("Services"),
+            service: Joi.string().optional().label("Service"),
             date: Joi.date().optional().label('Appointment date'),
             time: Joi.date().optional().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
@@ -239,7 +237,7 @@ export default class AppointmentController {
         const payload = {
             date: value.date ? value.date : appointment.date,
             time: value.time ? value.time : appointment.time,
-            services: value.services ? value.services : appointment.services,
+            service: value.service ? value.service : appointment.service,
             additionalInfo: value.additionalInfo ? value.additionalInfo : appointment.additionalInfo,
             email: value.email ? value.email : appointment.email,
             firstName: value.firstName ? value.firstName : appointment.firstName,

@@ -34,7 +34,7 @@ import {
     fetchNewslettersHandler, 
     fetchServicesHandler, 
     fetchSubscribersHandler, 
-    fetchTestimonialsHandler, 
+    fetchTestimonialsAdminHandler, 
     getAllClientsHandler, 
     getDocsHandler, 
     getSingleAuthorHandler, 
@@ -55,7 +55,9 @@ import {
     updateNewsLetterHandler, 
     updateServiceHandler, 
     updateSubscriberHandler,
-    updateTestimonialHandler
+    updateTestimonialHandler,
+    toggleTestimonialStatusHandler,
+    fetchTestimonialsClientHandler
 } from '../../routes/adminRoute';
 
 const adminEndpoints: RouteEndpoint  = [
@@ -324,6 +326,12 @@ const adminEndpoints: RouteEndpoint  = [
         handler: createTestimonialHandler
     },
     {
+        name: 'toggle-testimonial-status',
+        method: 'post',
+        path: '/toggle-testimonial-status/:testimonialId',
+        handler: toggleTestimonialStatusHandler
+    },
+    {
         name: 'update-testimonial',
         method: 'put',
         path: '/update-testimonial/:testimonialId',
@@ -336,10 +344,16 @@ const adminEndpoints: RouteEndpoint  = [
         handler: getSingleTestimonialHandler
     },
     {
-        name: 'fetch-testimonials',
+        name: 'fetch-testimonials-admin',
         method: 'get',
-        path: '/fetch-testimonials',
-        handler: fetchTestimonialsHandler
+        path: '/fetch-testimonials-admin',
+        handler: fetchTestimonialsAdminHandler
+    },
+    {
+        name: 'fetch-testimonials-client',
+        method: 'get',
+        path: '/fetch-testimonials-client',
+        handler: fetchTestimonialsClientHandler
     },
     {
         name: 'delete-testimonial',

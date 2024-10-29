@@ -1,5 +1,4 @@
-import { 
-    DEAD_LETTER_EXCHANGE, 
+import {
     DEAD_LETTER_QUEUE, 
     QUEUE_EVENTS_CHAT, 
     QUEUE_EVENTS_CHAT_SEEN, 
@@ -12,7 +11,6 @@ const rabbitMqService = new RabbitMQService(
     QUEUE_EVENTS_PAYMENT.name, 
     QUEUE_EVENTS_EMAIL.name, 
     DEAD_LETTER_QUEUE.name,
-    DEAD_LETTER_EXCHANGE.name,
     QUEUE_EVENTS_CHAT.name,
     QUEUE_EVENTS_CHAT_SEEN.name
 );

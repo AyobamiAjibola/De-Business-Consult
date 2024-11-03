@@ -2,13 +2,13 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 interface IUserToken {
     userId: string,
-    refreshToken: string,
+    refresh_token: string,
     expired_at: Date
 }
 
 const userTokenSchema = new Schema<IUserToken>({
    userId: { type: String },
-   refreshToken: { type: String },
+   refresh_token: { type: String },
    expired_at: { type: Date }
 });
 

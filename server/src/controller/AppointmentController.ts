@@ -10,8 +10,6 @@ import { AppointmentStatus, IAppointmentModel } from "../models/Appointment";
 import Generic from "../utils/Generic";
 import moment from "moment-timezone";
 import { IAppointmentConfigModel } from "../models/AppointmentConfig";
-import appointment_template from "../resources/template/email/appointment";
-import { scheduleNotifications } from "../services/BullSchedulerService";
 import status_template from "../resources/template/email/status_template";
 import rabbitMqService from "../config/RabbitMQConfig";
 
@@ -22,6 +20,7 @@ export default class AppointmentController {
     @TryCatch
     public async createAppointmentConfig (req: Request) {
         const { error, value } = Joi.object<any>({
+            name: Joi.string().required().label("Name"),
             amount: Joi.string().required().label("Amount"),
             service: Joi.number().required().label("Number of services")
         }).validate(req.body);
@@ -38,6 +37,7 @@ export default class AppointmentController {
             return Promise.reject(CustomAPIError.response("You have a service config with the selected number.", HttpStatus.BAD_REQUEST.code));
 
         await datasources.appointmentConfigDAOService.create({ 
+            name: value.name,
             amount: value.amount,
             service: value.service
         } as IAppointmentConfigModel);

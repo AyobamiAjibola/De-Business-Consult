@@ -795,13 +795,6 @@ export default class ApplicationController {
             if(!chat)
                 return reject(CustomAPIError.response("Chat does not exist.", HttpStatus.NOT_FOUND.code));
 
-            // const basePath = `${UPLOAD_BASE_PATH}/photo`;
-
-            // const { result: _file, error: fileError } = await Generic.handleFiles(files.applicationFile as unknown as File, basePath);
-            // if (fileError) {
-            //     return reject(CustomAPIError.response(fileError, HttpStatus.BAD_REQUEST.code));
-            // }
-
             let successApplicationFiles = [];
             for (const key of Object.keys(files)) {
                 const serviceFile = files[key] as formidable.File;

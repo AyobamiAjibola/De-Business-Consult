@@ -25,7 +25,7 @@ interface IAppointment {
 };
 
 const appointmentSchema = new Schema<IAppointment>({
-    service: { type: Schema.Types.ObjectId, ref: 'Service' },
+    service: { type: Schema.Types.ObjectId, ref: 'Services' },
     date: { type: Date },
     time: { type: Date },
     status: {
@@ -44,7 +44,7 @@ const appointmentSchema = new Schema<IAppointment>({
 }, { timestamps: true });
 
 appointmentSchema.pre(['findOne', 'find'], function (next) {
-    this.populate('services')
+    this.populate('service')
         .populate({
             path: 'client',
             select: 'firstName lastName email phone image companyName'

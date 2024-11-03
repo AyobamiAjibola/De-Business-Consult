@@ -342,14 +342,12 @@ export default class AuthenticationController {
         const user = await datasources.clientDAOService.findById(data.userId);
         if(!user) return Promise.reject(CustomAPIError.response("User not found.", HttpStatus.NOT_FOUND.code));
 
-        const { accessToken }: TokenTypes = await Generic.generateJWT({
-            userId: user._id
-        });
+        const { accessToken, refreshToken }: TokenTypes = await Generic.verify_refresh_token(value.refreshToken);
 
         const response: HttpResponse<any> = {
             message: `Successful.`,
             code: HttpStatus.OK.code,
-            result: accessToken
+            result: { accessToken, refreshToken }
         };
     
         return Promise.resolve(response);
@@ -388,14 +386,13 @@ export default class AuthenticationController {
             );
         
         const { accessToken, refreshToken }: TokenTypes = await Generic.generateJWT({
-            userId: client._id,
-            fullName: `${client.firstName} ${client.lastName}`
+            userId: client._id
         });
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: 'Login successful.',
-            result: {accessToken, refreshToken}
+            result: { accessToken, refreshToken }
         };
     
         return Promise.resolve(response);

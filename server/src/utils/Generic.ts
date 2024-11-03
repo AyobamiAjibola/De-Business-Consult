@@ -427,102 +427,85 @@ export default class Generic {
     }
   }
 
-  public static async generateJWT(payload: CustomJwtPayload) {
+  public static async generateJWT(payload: CustomJwtPayload, refresh_token: string = '') {
     try {
-      // Create the access token
+
       const accessToken = sign(payload, <string>settings.jwtAccessToken.key, {
         expiresIn: <string>settings.jwtAccessToken.expiry,
       });
 
-      // Create the refresh token
-      const refreshToken = sign(payload, <string>settings.jwtRefreshToken.key, {
-        expiresIn: <string>settings.jwtRefreshToken.expiry,
-      });
-
-      // Delete any existing user tokens
-      await UserToken.deleteOne({ userId: payload.userId });
-
-      // Calculate the refresh token expiration date (e.g., 2 days from now)
-      const refreshTokenExpiry = new Date();
-      refreshTokenExpiry.setHours(refreshTokenExpiry.getHours() + 48);
-
-      // Create a new user token
-      await UserToken.create({
-        userId: payload.userId,
-        token: refreshToken,
-        expired_at: refreshTokenExpiry,
-      });
-
-      return { accessToken, refreshToken };
+      const userToken = await UserToken.findOne({ userId: payload.userId });
+  
+      if (refresh_token) {
+        if (!userToken || userToken.refresh_token !== refresh_token) {
+          return Promise.reject(
+            CustomAPIError.response("Invalid refresh token", HttpStatus.UNAUTHORIZED.code)
+          );
+        }
+      } else {
+        refresh_token = sign(payload, <string>settings.jwtRefreshToken.key, {
+          expiresIn: <string>settings.jwtRefreshToken.expiry,
+        });
+  
+        const refreshTokenExpiry = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  
+        if (userToken) {
+          await UserToken.deleteOne({ userId: payload.userId });
+        }
+        await UserToken.create({
+          userId: payload.userId,
+          refresh_token,
+          expired_at: refreshTokenExpiry,
+        });
+      }
+  
+      return { accessToken, refreshToken: refresh_token };
+  
     } catch (err: any) {
-      return Promise.reject(
-        CustomAPIError.response(err, HttpStatus.BAD_REQUEST.code)
-      );
+        return Promise.reject(
+          CustomAPIError.response(err, HttpStatus.BAD_REQUEST.code)
+        );
     }
-  }
+  }  
 
-  public static async refreshToken(
-    refreshToken: string,
-    req: Request,
-    next: NextFunction
-  ) {
+  public static async verify_refresh_token(refreshToken: string): Promise<{ accessToken: string, refreshToken: string }> {
+
     try {
       if (!refreshToken) {
-        return Promise.reject(
-          CustomAPIError.response(
-            HttpStatus.UNAUTHORIZED.value,
-            HttpStatus.UNAUTHORIZED.code
-          )
+        throw CustomAPIError.response(
+          HttpStatus.UNAUTHORIZED.value,
+          HttpStatus.UNAUTHORIZED.code
         );
       }
 
-      // Check if the refresh token exists in the database
-      const userToken = await UserToken.findOne({ token: refreshToken });
+      // Verify and decode the refresh token
+      const data: any = verify(refreshToken, settings.jwtRefreshToken.key as string);
 
-      if (!userToken) {
-        // throw new AppError('Invalid refresh token', BAD_REQUEST);
-        return Promise.reject(
-          CustomAPIError.response(
-            "Invalid refresh token",
-            HttpStatus.BAD_REQUEST.code
-          )
-        );
-      }
+      if(!data.userId)
+        return Promise.reject(CustomAPIError.response("Could not validate token", HttpStatus.BAD_REQUEST.code));
 
-      // Verify the refresh token and get the payload
-      const data: any = verify(
-        refreshToken,
-        settings.jwtRefreshToken.key as string
-      );
-
-      // Check if there is a valid user token in the database
-      const dbToken = await UserToken.findOne({
+      // Check if the token exists and is still valid in the database
+      const userToken = await UserToken.findOne({
         userId: data.userId,
+        token: refreshToken,
         expired_at: { $gte: new Date() },
       });
 
-      if (!dbToken) {
-        // throw new AppError('Invalid refresh token', BAD_REQUEST);
-        return Promise.reject(
-          CustomAPIError.response(
-            "Invalid refresh token",
-            HttpStatus.BAD_REQUEST.code
-          )
-        );
+      if (!userToken) {
+        return Promise.reject(CustomAPIError.response("Invalid or expired refresh token", HttpStatus.BAD_REQUEST.code));
       }
+  
+      const token = await this.generateJWT({userId: userToken.userId}, refreshToken)
 
-      // Attach the payload to the request object
-      req.data = data;
-
-      next();
+      return { 
+        accessToken: token.accessToken, 
+        refreshToken: token.refreshToken
+      };
+  
     } catch (error: any) {
-      next(
-        Promise.reject(
-          CustomAPIError.response(error, HttpStatus.BAD_REQUEST.code)
-        )
-      );
+      throw CustomAPIError.response(error, HttpStatus.BAD_REQUEST.code);
     }
-  }
+  }  
 
   public static generateRandomString(limit: number) {
     const letters =

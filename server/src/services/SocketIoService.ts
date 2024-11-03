@@ -61,7 +61,7 @@ class SocketService {
         });
 
       } else {
-        console.log('Receiver not online. Message will remain in queue.');
+        console.log('Receiver not online. Message will remain in queue.'); // write a logic latter to mark as delivered or read when user come back online
       }
     } catch (error) {
       console.error('Error sending message:', error);

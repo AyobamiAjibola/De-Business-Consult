@@ -1,11 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 interface IAppointmentConfig {
+    name: string,
     amount: string,
     service: number
 }
 
 const appointmentConfigSchema = new Schema<IAppointmentConfig>({
+    name: { type: String },
     amount: { type: String },
     service: { type: Number }
 });

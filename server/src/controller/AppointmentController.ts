@@ -20,9 +20,9 @@ export default class AppointmentController {
     @TryCatch
     public async createAppointmentConfig (req: Request) {
         const { error, value } = Joi.object<any>({
-            name: Joi.string().required().label("Name"),
+            name: Joi.string().optional().allow('').label("Name"),
             amount: Joi.string().required().label("Amount"),
-            service: Joi.number().required().label("Number of services")
+            service: Joi.string().required().label("Service id")
         }).validate(req.body);
         if (error)
             return Promise.reject(
@@ -86,7 +86,7 @@ export default class AppointmentController {
     @TryCatch
     public async createAppointment (req: Request) {
         const { error, value } = Joi.object<any>({
-            service: Joi.string().required().label("Services"),
+            service: Joi.string().required().label("Service"),
             date: Joi.date().required().label('Appointment date'),
             time: Joi.date().required().label('Appointment time'),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
@@ -132,7 +132,7 @@ export default class AppointmentController {
             );
         };
 
-        const appointmentConfig = await datasources.appointmentConfigDAOService.findByAny({ service: value.services.length })
+        const appointmentConfig = await datasources.appointmentConfigDAOService.findByAny({ service: value.service })
 
         const selectedDateTime = new Date(value.date);
         const currentDateTime = new Date();

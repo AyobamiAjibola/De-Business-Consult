@@ -3,14 +3,19 @@ import mongoose, { Document, Schema } from 'mongoose';
 interface IAppointmentConfig {
     name: string,
     amount: string,
-    service: number
+    service: mongoose.Types.ObjectId
 }
 
 const appointmentConfigSchema = new Schema<IAppointmentConfig>({
     name: { type: String },
-    amount: { type: String },
-    service: { type: Number }
+    service: { type: Schema.Types.ObjectId, ref: 'Services' },
+    amount: { type: String }
 });
+
+appointmentConfigSchema.pre(['findOne', 'find'], function (next) {
+    this.populate('service')
+    next();
+})
 
 export interface IAppointmentConfigModel extends Document, IAppointmentConfig {}
 

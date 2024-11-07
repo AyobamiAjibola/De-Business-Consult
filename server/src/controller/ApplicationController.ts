@@ -77,13 +77,13 @@ export default class ApplicationController {
     }
 
     public async paymentIntent(req: Request) {
-        const loggedInUser = req.user._id;
 
         const { error, value } = Joi.object<any>({
             amount: Joi.number().optional().label("Service Amount"),
             itemId: Joi.string().required().label("Item Id"),
             paymentType: Joi.string().required().label("Payment Type"),
-            noOfServices: Joi.number().optional().label("No of services"),
+            service: Joi.string().optional().label("service id"),
+            clientId: Joi.string().optional().label("Client id"),
             email: Joi.string().required().label("Email")
         }).validate(req.body);
         if (error)
@@ -94,8 +94,8 @@ export default class ApplicationController {
               )
             );
 
-        const client = await datasources.clientDAOService.findById(loggedInUser);
-        if(!client)
+        const client = await datasources.clientDAOService.findById(value.clientId);
+        if(value.clientId && !client)
             return Promise.reject(CustomAPIError.response("User does not exist", HttpStatus.NOT_FOUND.code));
 
         if(!paymentType.includes(value.paymentType)) 
@@ -159,12 +159,12 @@ export default class ApplicationController {
                     return Promise.reject(CustomAPIError.response("The Appointment has already been paid for.", HttpStatus.BAD_REQUEST.code));
                 }
 
-                if(!value.noOfServices || value.noOfServices === 0)
-                    return Promise.reject(CustomAPIError.response("Please provide length of services selected.", HttpStatus.NOT_FOUND.code))
+                if(!value.service)
+                    return Promise.reject(CustomAPIError.response("Please provide a services id.", HttpStatus.NOT_FOUND.code))
                 
-                const service = await datasources.appointmentConfigDAOService.findByAny({ service: value.noOfServices });
+                const service = await datasources.appointmentConfigDAOService.findByAny({ service: value.service });
                 if(!service)
-                    return Promise.reject(CustomAPIError.response("Please add an amount for the selected service length.", HttpStatus.NOT_FOUND.code))
+                    return Promise.reject(CustomAPIError.response("Unexpected error, please contact administrator.", HttpStatus.NOT_FOUND.code))
                 
                 appointmentAmount = +service?.amount;
                 itemNo = item.appointmentId;
@@ -184,7 +184,7 @@ export default class ApplicationController {
                     paymentType: value.paymentType,
                     recipientEmail: value.email,
                     itemNo,
-                    client: client._id.toString()
+                    client: client?._id.toString()
                 }
             });
             

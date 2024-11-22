@@ -1,9 +1,9 @@
 {
   "firstName": "De Business",
   "lastName": "Consult",
-  "email": "debiz_admin@debizconsult.com",
+  "email": "debusinessconsulting.com@gmail.com",
   "phone": "2348031987665",
   "password": "$2a$12$CL19dwUaOXIyADpsePGxheogASOWvSMMB4NkBdue0D1WzQl7VsKzW",
   "isAdmin": true,
-  "userType": [ "super-admin", "admin" ]
+  "userType": [ "super-admin" ]
 }

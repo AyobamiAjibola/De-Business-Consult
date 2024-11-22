@@ -8,8 +8,9 @@ import { appModelTypes } from '../@types/app-model';
 import AbstractCrudRepository = appModelTypes.AbstractCrudRepository;
 import admin from '../resources/data/admin.json';
 import { UPLOAD_BASE_PATH } from '../config/constants';
-import { IUserModel } from '../models/User';
+import { IUserModel, UserType } from '../models/User';
 import UserRepository from '../repositories/UserRepository';
+import datasources from '../services/dao'
 
 export default class CommandLineRunner {
   public static singleton: CommandLineRunner = new CommandLineRunner();
@@ -21,6 +22,7 @@ export default class CommandLineRunner {
 
   public static async run() {
     await this.singleton.loadDefaultUser();
+    await this.singleton.loadCalendlyuid();
   }
 
   async createUploadDirectory() {
@@ -38,9 +40,24 @@ export default class CommandLineRunner {
         email: admin.email,
         phone: admin.phone,
         password: admin.password,
-        userType: admin.userType
+        userType: admin.userType,
+        status: true
       } as IUserModel)
     };
+  }
+
+  async loadCalendlyuid() {
+    const user = await this.userRepository.findAll({ 
+      userType: { $in: [UserType.SuperAdmin, UserType.Appointment] }
+    });
+    
+    await datasources.userDAOService.updateMany(
+      { userType: { $in: [UserType.SuperAdmin, UserType.Appointment] } },
+      { $set: { calendly: { 
+        uid: process.env.CALENDLY_USER_INFO, 
+        accessToken: process.env.CALENDLY_ADMIN_ACCESS_TOKEN
+      } } }
+    )
   }
 
 }

@@ -26,12 +26,20 @@ import contact_us_template from "../resources/template/email/contactUs";
 import rabbitMqService from "../config/RabbitMQConfig";
 import BcryptPasswordEncoder = appCommonTypes.BcryptPasswordEncoder;
 import { IChatModel } from "../models/ChatModel";
+import CalendlyWebhook from "../services/CalendlyWebhook";
+import RedisService from "../services/RedisService";
+import CalendlyService from "../services/CalendlyService";
+import Transaction from "../models/Transaction";
+
+const redisService = new RedisService();
 
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
 const blogStatus = [BlogStatus.Archived, BlogStatus.Draft, BlogStatus.Published];
 const newsLetterStatus = [NewsLetterStatus.Draft, NewsLetterStatus.Scheduled, NewsLetterStatus.Sent];
-const subscriberStatus = [SubscriberStatus.Active, SubscriberStatus.Inactive]
+const subscriberStatus = [SubscriberStatus.Active, SubscriberStatus.Inactive];
+
+const calendlyWebhookService = new CalendlyWebhook(rabbitMqService);
 
 export default class AdminController {
     private readonly passwordEncoder: BcryptPasswordEncoder | undefined;
@@ -39,6 +47,119 @@ export default class AdminController {
     constructor(passwordEncoder?: BcryptPasswordEncoder) {
       this.passwordEncoder = passwordEncoder;
     };
+
+    @TryCatch
+    public async booking(req: Request) {
+        const userId = req.user._id;
+
+        const { error, value } = Joi.object<any>({
+            appointmentId: Joi.string().required().label('Appointment Id')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const payload = JSON.stringify({ 
+            user: userId,
+            appointmentId: value.appointmentId 
+        });
+
+        redisService.saveToken('de_calendly', payload, 120);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful',
+        };
+    
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async calendlyWebhook(req: Request) {
+        let message = '';
+        try {
+            const event = await calendlyWebhookService.handleCalendlyEvent(req.body)
+            if(event.status === 'active') {
+                message = 'success';
+            } else {
+                console.log(event.message, 'error message');
+                message = 'error message: something went wrong';
+            }
+        } catch (error: any) {
+            console.log(`Webhook Error: ${error.message}`);
+            message = 'Webhook Error';
+        }
+
+        const response: HttpResponse<any> = {
+            code: message === 'success' ? HttpStatus.OK.code : HttpStatus.BAD_REQUEST.code,
+            message,
+        };
+    
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async calendlyEvent(req: Request) {
+        const { accessToken } = req.user.calendly;
+        const eventId = req.params.eventId;
+
+        const calendlyService = new CalendlyService(accessToken);
+
+        const { resource } = await calendlyService.getUserScheduledEvent(eventId);
+
+        const event = await Generic.formatEventDateTime(resource);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+            result: event
+        };
+    
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async cancelEvent(req: Request) {
+        const { accessToken } = req.user.calendly;
+
+        const isAllowed = await Generic.handleAllowedAppointmentUser(req.user.userType)
+        if(!isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        const eventId = req.params.eventId;
+        const { reason } = req.body;
+        const calendlyService = new CalendlyService(accessToken);
+
+        const resource = await calendlyService.cancelEvent(eventId, reason);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+            result: resource
+        };
+    
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
+    public async noShow(req: Request) {
+        const { accessToken } = req.user.calendly;
+        const { no_show_uri } = req.body;
+
+        const isAllowed = await Generic.handleAllowedAppointmentUser(req.user.userType)
+        if(!isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        const calendlyService = new CalendlyService(accessToken);
+
+        const { resource } = await calendlyService.markAsNoShow(no_show_uri);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: 'Successful.',
+            result: resource
+        };
+    
+        return Promise.resolve(response);
+    }
 
     @TryCatch
     public async findChat(req: Request) {
@@ -223,17 +344,21 @@ export default class AdminController {
             skip: (page - 1) * limit
         };
 
-        const [user, applications, appointments, clientsCount, applicationCount, appointmentCount] = await Promise.all([
+        const [user, applications, appointments, clientsCount, applicationCount, appointmentCount, transaction] = await Promise.all([
             datasources.userDAOService.findById(userId),
             datasources.applicationDAOService.findAll({ 
                 status: ApplicationStatus.InReview
             }, searchOptions),
             datasources.appointmentDAOService.findAll({
-                status: { $in: [AppointmentStatus.Pending, AppointmentStatus.Confirmed] }
+                status: { $in: [AppointmentStatus.Upcoming] }
             }, searchOptions),
             Client.count(),
             Application.count(),
-            Appointment.count()
+            Appointment.count(),
+            Transaction.aggregate([
+                { $match: { status: "paid" } },
+                { $group: { _id: null, totalAmount: { $sum: "$amount" } } }
+            ])
         ]);
         
         if(!user)
@@ -243,6 +368,8 @@ export default class AdminController {
         if(user && !isAllowed)
             return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
+        const totalAmount = (transaction[0]?.totalAmount || 0) / 100;
+
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
             message: `Successful.`,
@@ -251,7 +378,8 @@ export default class AdminController {
                 appointments, 
                 clientsCount, 
                 applicationCount, 
-                appointmentCount
+                appointmentCount,
+                transaction: totalAmount
             }
         };
 
@@ -1382,6 +1510,15 @@ export default class AdminController {
     @TryCatch
     public async deleteTestimonial(req: Request) {
         const testimonialId = req.params.testimonialId;
+        const userId = req.user._id;
+
+        const user = await datasources.userDAOService.findById(userId);
+        if(!user)
+            return Promise.reject(CustomAPIError.response("User does not exist.", HttpStatus.NOT_FOUND.code)); 
+
+        const isAllowed = await Generic.handleAllowedUser(user.userType)
+        if(!isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
         const testimonial = await datasources.testimonialDAOService.findById(testimonialId);
         if(!testimonial)
@@ -1613,7 +1750,7 @@ export default class AdminController {
                     datasources.userDAOService.findById(loggedInUser)
                 ]);
 
-                const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+                const isAllowed = await Generic.handleAllowedBlogUser(user && user.userType)
                 if(user && !isAllowed)
                     return reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
@@ -1662,7 +1799,7 @@ export default class AdminController {
                 if(!author)
                     return reject(CustomAPIError.response("Author does not exist.", HttpStatus.NOT_FOUND.code));
 
-                const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+                const isAllowed = await Generic.handleAllowedBlogUser(user && user.userType)
                 if(user && !isAllowed)
                     return reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
@@ -1693,7 +1830,7 @@ export default class AdminController {
         return new Promise((resolve, reject) => {
            
             form.parse(req, async (err, fields, files) => {
-
+                const userId = req.user._id;
                 const { error, value } = Joi.object<IServicesModel>({
                     name: Joi.string().required().label('Service name'),
                     cost: Joi.string().required().label('Cost'),
@@ -1702,9 +1839,14 @@ export default class AdminController {
                 }).validate(fields);
                 if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
         
-                const [service] = await Promise.all([
+                const [user, service] = await Promise.all([
+                    datasources.userDAOService.findById(userId),
                     datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() })
                 ]);
+
+                const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+                if(user && !isAllowed)
+                    return reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
         
                 if(service)
                     return reject(CustomAPIError.response('Service name already exist.', HttpStatus.NOT_FOUND.code));
@@ -1737,6 +1879,7 @@ export default class AdminController {
            
             form.parse(req, async (err, fields, files) => {
                 const serviceId = req.params.serviceId;
+                const userId = req.user._id;
 
                 const { error, value } = Joi.object<IServicesModel>({
                     name: Joi.string().optional().allow('').label('Service name'),
@@ -1746,13 +1889,18 @@ export default class AdminController {
                 }).validate(fields);
                 if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
         
-                const [service] = await Promise.all([
+                const [user, service] = await Promise.all([
+                    datasources.userDAOService.findById(userId),
                     datasources.servicesDAOService.findById(serviceId)
                 ]);
 
                 if(!service)
                     return reject(CustomAPIError.response('Service does not exist.', HttpStatus.NOT_FOUND.code));
         
+                const isAllowed = await Generic.handleAllowedUser(user && user.userType)
+                if(user && !isAllowed)
+                    return reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
                 if (value.name.toLowerCase() && value.name.toLowerCase() !== service.name) {
                     const existingService = await datasources.servicesDAOService.findByAny({ name: value.name.toLowerCase() });
                     if (existingService) {
@@ -1814,6 +1962,10 @@ export default class AdminController {
                     Author.findById(value.author),
                 ]);
 
+                const isAllowed = await Generic.handleAllowedBlogUser(user && user.userType)
+                if(user && !isAllowed)
+                    return reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
                 if(!blogStatus.includes(value.status)) 
                     return reject(CustomAPIError.response(`Blog status provided is invalid.`, HttpStatus.NOT_FOUND.code))
 
@@ -1822,10 +1974,6 @@ export default class AdminController {
 
                 if(!author)
                     return reject(CustomAPIError.response(`Author does not exist.`, HttpStatus.FORBIDDEN.code))
-
-                const isAllowed = await Generic.handleAllowedUser(user && user.userType)
-                if(user && !isAllowed)
-                    return reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
                 if(!category)
                     return reject(CustomAPIError.response("Category does not exist.", HttpStatus.NOT_FOUND.code));
@@ -1904,6 +2052,10 @@ export default class AdminController {
                     datasources.blogDAOService.findById(blogId),
                 ]);
 
+                const isAllowed = await Generic.handleAllowedBlogUser(user && user.userType)
+                if(user && !isAllowed)
+                    return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
                 if(!blog)
                     return reject(CustomAPIError.response(`Blog does not exist.`, HttpStatus.NOT_FOUND.code))
 
@@ -1916,10 +2068,6 @@ export default class AdminController {
 
                 if(value.author && !author)
                     return reject(CustomAPIError.response(`Author does not exist.`, HttpStatus.FORBIDDEN.code))
-
-                const isAllowed = await Generic.handleAllowedUser(user && user.userType)
-                if(user && !isAllowed)
-                    return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
                 if(value.category && !category)
                     return reject(CustomAPIError.response("Category does not exist.", HttpStatus.NOT_FOUND.code));

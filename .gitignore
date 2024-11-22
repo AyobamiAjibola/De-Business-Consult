@@ -68,6 +68,7 @@ docs
 admin
 client
 server/.env
+server/src/services/BullSchedulerService.ts
 
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.

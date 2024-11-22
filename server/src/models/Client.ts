@@ -28,7 +28,8 @@ interface IClient {
     smsNotification: boolean,
     emailNotification: boolean,
     newsAndUpdate: boolean,
-    isClient: boolean
+    isClient: boolean,
+    calendlyUid: string
 };
 
 const clientSchema = new Schema<IClient>({
@@ -53,7 +54,8 @@ const clientSchema = new Schema<IClient>({
     smsNotification: { type: Boolean, default: false },
     emailNotification: { type: Boolean, default: false },
     newsAndUpdate: { type: Boolean, default: false },
-    isClient: { type: Boolean, default: false }
+    isClient: { type: Boolean, default: false },
+    calendlyUid: { type: String }
 }, { timestamps: true });
   
 export interface IClientModel extends Document, IClient {}

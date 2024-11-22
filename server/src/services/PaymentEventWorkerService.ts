@@ -6,7 +6,7 @@ import rabbitMqService from "../config/RabbitMQConfig";
 import appointment_template from '../resources/template/email/appointment';
 import { AppointmentStatus } from '../models/Appointment';
 import moment from "moment-timezone";
-import { scheduleNotifications } from './BullSchedulerService';
+// import { scheduleNotifications } from './BullSchedulerService';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -39,13 +39,6 @@ export async function processEvent(event: Stripe.Event) {
 
                 if(!appointment) return;
 
-                // const servicePromises = appointment.services.map(async (serviceId) => {
-                //     const service = await datasources.servicesDAOService.findById(serviceId);
-                //     return service?.name;
-                // });
-
-                // const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
-
                 const service = await datasources.servicesDAOService.findById(appointment.service);
                 
                 const dateWithoutZ = appointment.date.toISOString().replace('Z', '');
@@ -66,12 +59,12 @@ export async function processEvent(event: Stripe.Event) {
                     html: mail
                 }
                 
-                await rabbitMqService.sendEmail({data: emailPayload});
-                await scheduleNotifications({ 
-                    appointmentTime: appointment.time, 
-                    email: appointment.email,
-                    appointmentId: appointment.appointmentId
-                });
+                // await rabbitMqService.sendEmail({data: emailPayload});
+                // await scheduleNotifications({ 
+                //     appointmentTime: appointment.time, 
+                //     email: appointment.email,
+                //     appointmentId: appointment.appointmentId
+                // });
             } else {
                 await datasources.clientDAOService.updateByAny({ _id: client }, { isClient: true })
             }

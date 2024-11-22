@@ -10,6 +10,7 @@ import router from "./routes/index";
 import { webhookHandler } from "./routes/applicationRoute";
 import fs from "fs";
 import archiver from "archiver";
+import { calendlyWebhookHandler } from "./routes/adminRoute";
 
 const app = express();
 export const corsOptions = {
@@ -17,6 +18,8 @@ export const corsOptions = {
     <string>process.env.CLIENT_URL,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3100",
+    "http://127.0.0.1:3100",
     "http://localhost:5173",
     "http://localhost:5174",
     "https://de-admin.toverbers.com",
@@ -36,6 +39,12 @@ app.use("/uploads", _static(path.resolve("uploads")));
 app.post('/api/v1/webhook', express.raw({ type: 'application/json' }), webhookHandler);
 
 app.use(json()); 
+
+//Calendly webhook
+app.post('/api/v1/webhooks/calendly', (req, res) => {
+  calendlyWebhookHandler(req, res)
+  res.status(200).send('Webhook received');
+});
 
 //APPLICATION FILE DOWNLOAD API
 app.post('/api/v1/download', async (req: Request, res: Response) => {

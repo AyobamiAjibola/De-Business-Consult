@@ -1,9 +1,9 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export enum UserType {
-    Admin = 'admin',
-    User = 'user',
-    Guest = 'guest',
+    Blog = 'blog',
+    Application = 'application',
+    Appointment = 'appointment',
     SuperAdmin = 'super-admin'
 }
 
@@ -17,7 +17,7 @@ interface IUser {
     lastName: string;
     phone: string;
     image: string;
-    status: UserStatus;
+    status: boolean;
     email: string;
     password: string,
     passwordReset: {
@@ -25,6 +25,11 @@ interface IUser {
         code: string
     },
     userType: UserType[];
+    calendly: {
+        uid: string;
+        accessToken: string;
+        // refreshToken: string;
+    }
 };
 
 const userSchema = new Schema<IUser>({
@@ -33,9 +38,9 @@ const userSchema = new Schema<IUser>({
     phone: { type: String },
     image: { type: String },
     status: { 
-        type: String, 
+        type: Boolean, 
         enum: Object.values(UserStatus), 
-        default: UserStatus.Active 
+        default: true
     },
     email: { type: String },
     password: { type: String },
@@ -43,7 +48,13 @@ const userSchema = new Schema<IUser>({
         exp: { type: Date, allowNull: true },
         code: { type: String },
     },
-    userType: [{ type: String, enum: Object.values(UserType) }]
+    userType: [{ type: String, enum: Object.values(UserType) }],
+    calendly: {
+        uid: { type: String },
+        accessToken: { type: String },
+        // refreshToken: { type: String }
+    }
+
 }, { timestamps: true });
   
 export interface IUserModel extends Document, IUser {}

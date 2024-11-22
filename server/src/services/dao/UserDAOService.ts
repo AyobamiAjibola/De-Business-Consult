@@ -1,4 +1,4 @@
-import { FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
+import { FilterQuery, UpdateQuery, QueryOptions, UpdateWriteOpResult } from 'mongoose';
 import {IUserModel} from '../../models/User';
 
 import { appModelTypes } from '../../@types/app-model';
@@ -43,6 +43,14 @@ export default class UserDAOService implements ICrudDAO<IUserModel> {
     options?: QueryOptions
   ): Promise<IUserModel | null> {
     return this.userRepository.updateByAny(filter, update, options)
+  }
+
+  updateMany(
+    filter: FilterQuery<IUserModel>, 
+    update: UpdateQuery<IUserModel>, 
+    options?: QueryOptions): Promise<UpdateWriteOpResult> 
+  {
+    return this.userRepository.updateMany(filter, update, options)
   }
 
   deleteByAny(filter: FilterQuery<IUserModel>, options?: QueryOptions): Promise<void> {

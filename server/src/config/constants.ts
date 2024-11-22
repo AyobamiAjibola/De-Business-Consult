@@ -63,6 +63,10 @@ import StatusTypes = appCommonTypes.StatusTypes;
     name: 'DE-CHAT-SEEN'
   };
 
+  export const QUEUE_EVENTS_CALENDLY : QueueEvents = {
+    name: 'DE-CALENDLY'
+  };
+
   export const STATUSES: StatusTypes = {
     sent: 'sent',
     delivered: 'delivered',

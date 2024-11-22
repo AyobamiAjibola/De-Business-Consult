@@ -8,6 +8,7 @@ import {
     fetchAllAppointmentsHandler, 
     fetchClientAppointmentsHandler, 
     getAppointmentConfigHandler, 
+    getSingleAppointmentHandler, 
     updateAppointmentHandler 
 } from '../../routes/appointmentRoute';
 
@@ -36,11 +37,23 @@ const appointmentEndpoints: RouteEndpoint  = [
         path: '/create-appointment',
         handler: createAppointmentHandler
     },
+    // {
+    //     name: 'change appointment status',
+    //     method: 'put',
+    //     path: '/change-appointment-status/:appointmentId',
+    //     handler: changeAppointmentStatusHandler
+    // },
     {
-        name: 'change appointment status',
-        method: 'put',
-        path: '/change-appointment-status/:appointmentId',
-        handler: changeAppointmentStatusHandler
+        name: 'get single appointment',
+        method: 'get',
+        path: '/appointment/:appointmentId',
+        handler: getSingleAppointmentHandler
+    },
+    {
+        name: 'delete appointment',
+        method: 'delete',
+        path: '/delete-appointment/:appointmentId',
+        handler: deleteAppointmentConfigHandler
     },
     {
         name: 'fetch all appointments',

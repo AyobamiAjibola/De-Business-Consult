@@ -1,13 +1,25 @@
 import AuthenticationController from "../controller/AuthenticationController";
 import authenticateRouteWrapper from "../middleware/authenticateRouteWrapper";
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import PasswordEncoder from "../utils/PasswordEncoder";
 
 const passwordEncoder = new PasswordEncoder();
 const authController = new AuthenticationController(passwordEncoder);
 
+export const startOAuthHandler = authenticateRouteWrapper(async (req, res) => {
+
+    const response = await authController.OAuth(req);
+    res.status(response.code).json(response);
+});
+
 export const createUserHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await authController.createUser(req);
+
+    res.status(response.code).json(response);
+});
+
+export const updateUserHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.updateUser(req);
 
     res.status(response.code).json(response);
 });
@@ -26,6 +38,12 @@ export const fetchUsersHandler = authenticateRouteWrapper(async (req, res) =>  {
 
 export const getSingleUsersHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await authController.getSingleUser(req);
+
+    res.status(response.code).json(response);
+});
+
+export const resetUserPasswordHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await authController.resetUserPassword(req);
 
     res.status(response.code).json(response);
 });

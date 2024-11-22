@@ -4,11 +4,12 @@ import AppLogger from '../utils/AppLogger';
 import AsyncWrapper = appCommonTypes.AsyncWrapper;
 import CustomAPIError from '../exceptions/CustomAPIError';
 import HttpStatus from '../helpers/HttpStatus';
-import { verify } from 'jsonwebtoken';
+import { verify, decode } from 'jsonwebtoken';
 import CustomJwtPayload = appCommonTypes.CustomJwtPayload;
 import settings from '../config/settings';
 import UserRepository from '../repositories/UserRepository';
 import ClientRepository from '../repositories/ClientRepository';
+import datasources from '../services/dao'
 
 const userRepository = new UserRepository();
 const clientRepository = new ClientRepository();
@@ -23,7 +24,7 @@ export default function authenticateRouteWrapper(handler: AsyncWrapper) {
       logger.error(`malformed authorization: 'Bearer' missing`);
       return next(CustomAPIError.response(HttpStatus.UNAUTHORIZED.value, HttpStatus.UNAUTHORIZED.code));
     }
-   
+
     let authorization = '';
     if (token.startsWith('Bearer')) {
       authorization = token.split(' ')[1].trim();
@@ -34,6 +35,7 @@ export default function authenticateRouteWrapper(handler: AsyncWrapper) {
     try {
       const key = <string>settings.jwtAccessToken.key;
       const decodedToken = verify(authorization, key) as CustomJwtPayload;
+
       const user = await userRepository.findById(decodedToken.userId);
       const client = await clientRepository.findById(decodedToken.userId);
 

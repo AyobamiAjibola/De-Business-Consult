@@ -5,7 +5,7 @@ import startup from './startup';
 import AppLogger from './utils/AppLogger';
 import SocketService from './services/SocketIoService';
 import rabbitMqService from './config/RabbitMQConfig';
-import initializeNotificationQueue, { processNotifications } from './services/BullSchedulerService';
+// import initializeNotificationQueue, { processNotifications } from './services/BullSchedulerService';
 
 const socketIoService = new SocketService();
 
@@ -14,10 +14,10 @@ const port = process.env.PORT || 5050;
 
 const server = http.createServer(app);
 
-async function scheduler() {
-  await initializeNotificationQueue();
-  processNotifications(); 
-}
+// async function scheduler() {
+//   await initializeNotificationQueue();
+//   processNotifications(); 
+// }
 
 async function socketService() {
   try {
@@ -40,7 +40,7 @@ async function startServer() {
     await startup();
     await socketService();
     await startRabbitMqService();
-    await scheduler()
+    // await scheduler()
     server.listen(port, () => logger.info(`Server running on port: ${port}`));
   } catch (error) {
     console.error('Error starting the server:', error);

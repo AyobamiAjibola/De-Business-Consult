@@ -1,7 +1,7 @@
 import { appCommonTypes } from "../@types/app-common";
 import HttpResponse = appCommonTypes.HttpResponse;
 import BcryptPasswordEncoder = appCommonTypes.BcryptPasswordEncoder;
-import { Request } from "express";
+import { Request, NextFunction } from "express";
 import { TryCatch } from "../decorators";
 import Joi from "joi";
 import CustomAPIError from "../exceptions/CustomAPIError";
@@ -20,6 +20,7 @@ import formidable, { File } from 'formidable';
 import { UPLOAD_BASE_PATH } from "../config/constants";
 import reg_template from "../resources/template/email/reg_template";
 import rabbitMqService from "../config/RabbitMQConfig";
+import RedisService from "../services/RedisService";
 
 interface TokenTypes {
     accessToken: string, 
@@ -29,6 +30,7 @@ interface TokenTypes {
 const form = formidable({ uploadDir: UPLOAD_BASE_PATH });
 form.setMaxListeners(15);
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const redisService = new RedisService();
 
 export default class AuthenticationController {
     private readonly passwordEncoder: BcryptPasswordEncoder | undefined;
@@ -38,14 +40,34 @@ export default class AuthenticationController {
     };
 
     @TryCatch
+    public async OAuth(req: Request) {
+
+        const userId = req.user._id;
+
+        const payload = JSON.stringify({ 
+            user: userId
+        });
+
+        await redisService.saveToken('de_oauth', payload, 120);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successful.`
+        };
+
+        return Promise.resolve(response);
+    }
+
+    @TryCatch
     public async createUser(req: Request) {
         const userId = req.user._id
 
-        const { error, value } = Joi.object<IUserModel>({
+        const { error, value } = Joi.object<any>({
             email: Joi.string().required().label('Email'),
             firstName: Joi.string().required().label('First Name'),
             lastName: Joi.string().required().label('Last Name'),
             phone: Joi.string().required().label('Phone'),
+            permission: Joi.array().required().label('Permission')
         }).validate(req.body);
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
@@ -53,9 +75,10 @@ export default class AuthenticationController {
             datasources.userDAOService.findById(userId),
             datasources.userDAOService.findByAny({ email: value.email})
         ]); 
-
-        if(admin && !admin.userType.includes(UserType.SuperAdmin))
-            return Promise.reject(CustomAPIError.response('You are not authorized.', HttpStatus.UNAUTHORIZED.code));
+        
+        const isAllowed = await Generic.handleAllowedUser(admin && admin.userType)
+        if(admin && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
         if(user)
             return Promise.reject(CustomAPIError.response('A user with this email already exist.', HttpStatus.CONFLICT.code));
@@ -64,7 +87,7 @@ export default class AuthenticationController {
 
         const payload: Partial<IUserModel> = {
             ...value,
-            userType: [UserType.Admin],
+            userType: value.permission,
             password
         }
 
@@ -80,35 +103,112 @@ export default class AuthenticationController {
     }
 
     @TryCatch
+    public async resetUserPassword(req: Request) {
+        const userId = req.user._id;
+        const id = req.params.id;
+
+        const [admin, user] = await Promise.all([
+            datasources.userDAOService.findById(userId),
+            datasources.userDAOService.findById(id)
+        ]); 
+        
+        const isAllowed = await Generic.handleAllowedUser(admin && admin.userType)
+        if(admin && !isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        if(!user)
+            return Promise.reject(CustomAPIError.response("User not found.", HttpStatus.NOT_FOUND.code));
+
+        const password = await this.passwordEncoder?.encode(process.env.ADMIN_PASS as string);
+
+        await datasources.userDAOService.updateByAny({ _id: user._id }, { password });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successfully reset password.`
+        };
+
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async updateUser(req: Request) {
+        const userId = req.user._id;
+        const id = req.params.id
+
+        const { error, value } = Joi.object<any>({
+            email: Joi.string().label('Email'),
+            firstName: Joi.string().label('First Name'),
+            lastName: Joi.string().label('Last Name'),
+            phone: Joi.string().label('Phone'),
+            permission: Joi.array().label('Permission')
+        }).validate(req.body);
+        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
+
+        const [admin, user] = await Promise.all([
+            datasources.userDAOService.findById(userId),
+            datasources.userDAOService.findById(id)
+        ]); 
+        
+        const isAllowed = await Generic.handleAllowedUser(admin && admin.userType)
+        if(!isAllowed)
+            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+
+        if(!user)
+            return Promise.reject(CustomAPIError.response("User not found.", HttpStatus.NOT_FOUND.code));
+
+        if (value.email && value.email !== user.email) {
+            const existingUser = await datasources.userDAOService.findByAny({ email: value.email.toLowerCase() });
+            if (existingUser) {
+                return Promise.reject(CustomAPIError.response("A user with this email already exists.", HttpStatus.CONFLICT.code));
+            }
+        }
+
+        const payload: Partial<IUserModel> = {
+            email: value.email ? value.email : user.email,
+            firstName: value.firstName ? value.firstName : user.firstName,
+            lastName: value.lastName ? value.lastName : user.lastName,
+            userType: value.permission.length ? value.permission : user.userType,
+            phone: value.phone ? value.phone : user.phone
+        }
+
+        await datasources.userDAOService.updateByAny({ _id: user._id }, payload as IUserModel);
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.OK.code,
+            message: `Successfully updated.`
+        };
+
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
     public async updateUserStatus(req: Request) {
         const id = req.params.id
         const adminUserId = req.user._id
-
-        const { error, value } = Joi.object<IUserModel>({
-            status: Joi.string().required().label('Status')
-        }).validate(req.body);
-        if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
         const [admin, user] = await Promise.all([
             datasources.userDAOService.findById(adminUserId),
             datasources.userDAOService.findById(id)
         ]); 
 
-        if(!user)
-            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+        if(!admin)
+            return Promise.reject(CustomAPIError.response("User not found.", HttpStatus.NOT_FOUND.code));
 
-        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
-        if(user && !isAllowed)
+        const isAllowed = await Generic.handleAllowedUser(admin.userType)
+        if(!isAllowed)
             return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
         if(!user)
             return Promise.reject(CustomAPIError.response('User not found.', HttpStatus.NOT_FOUND.code));
 
-        await datasources.userDAOService.updateByAny({_id: user._id}, {status: value.status});
+        await datasources.userDAOService.updateByAny({_id: user._id}, {status: !user.status});
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
-            message: `Successfully updated status.`
+            message: `Successfully updated user status.`
         };
 
         return Promise.resolve(response);
@@ -118,14 +218,14 @@ export default class AuthenticationController {
     @TryCatch
     public async fetchUsers(req: Request) {
         const users = await datasources.userDAOService.findAll({
-            status: {
-                $ne: 'super-admin'
+            userType: {
+                $nin: ['super-admin']
             }
         });
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
-            message: `Successfully updated status.`,
+            message: `Successful.`,
             results: users
         };
 
@@ -135,7 +235,7 @@ export default class AuthenticationController {
 
     @TryCatch
     public async getSingleUser(req: Request) {
-        const userId = req.user._id;
+        const userId = req.params.id;
         const user = await datasources.userDAOService.findById(userId);
 
         const response: HttpResponse<any> = {

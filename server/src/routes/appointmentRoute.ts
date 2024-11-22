@@ -31,6 +31,18 @@ export const changeAppointmentStatusHandler = authenticateRouteWrapper(async (re
     res.status(response.code).json(response);
 });
 
+export const getSingleAppointmentHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await appointmentController.getSingleAppointment(req);
+
+    res.status(response.code).json(response);
+});
+
+export const deleteAppointmentHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await appointmentController.deleteAppointment(req);
+
+    res.status(response.code).json(response);
+});
+
 export const fetchAllAppointmentsHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await appointmentController.fetchAllAppointments(req);
 

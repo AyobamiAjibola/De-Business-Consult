@@ -12,12 +12,15 @@ import {
     getAccessTokenHandler, 
     getSingleUsersHandler, 
     loggingHandler, 
-    notificationSettingsHandler, 
+    notificationSettingsHandler,
     preSignUpHandler, 
     resetAdminPasswordHandler, 
     resetPasswordHandler, 
+    resetUserPasswordHandler, 
+    startOAuthHandler, 
     updateProfileAdminHandler, 
     updateProfileHandler, 
+    updateUserHandler, 
     updateUserStatusHandler, 
     validateResetAdminPasswordOtpHandler, 
     validateResetPasswordOtpHandler, 
@@ -30,6 +33,12 @@ const authEndpoints: RouteEndpoint  = [
         method: 'post',
         path: '/create-user',
         handler: createUserHandler
+    },
+    {
+        name: 'update user',
+        method: 'put',
+        path: '/update-user/:id',
+        handler: updateUserHandler
     },
     {
         name: 'update user status',
@@ -46,8 +55,14 @@ const authEndpoints: RouteEndpoint  = [
     {
         name: 'get single user',
         method: 'get',
-        path: '/get-single-user',
+        path: '/get-single-user/:id',
         handler: getSingleUsersHandler
+    },
+    {
+        name: 'reset user password',
+        method: 'put',
+        path: '/reset-user-password/:id',
+        handler: resetUserPasswordHandler
     },
     {
         name: 'get access token',
@@ -146,9 +161,9 @@ const authEndpoints: RouteEndpoint  = [
         handler: updateProfileHandler
     },
     {
-        name: 'update client profile admin',
+        name: 'update user profile',
         method: 'put',
-        path: '/update-client-profile-admin',
+        path: '/update-user-profile',
         handler: updateProfileAdminHandler
     }
 ]

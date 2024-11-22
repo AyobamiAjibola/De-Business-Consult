@@ -14,7 +14,7 @@ interface IProps {
     appointmentId: string
 }
 
-// Initialize the notification queue
+// Initialize the notification queue xx
 const initializeNotificationQueue = async (): Promise<Bull.Queue | null> => {
     if (!notificationQueue) {
         try {

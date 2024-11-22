@@ -107,6 +107,24 @@ export default class Generic {
     }
   }
 
+  public static formatTime (date: Date) {
+    return new Date(date).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  public static async formatEventDateTime(event: any) {
+    return {
+      ...event,
+      date: new Date(event.start_time).toLocaleDateString(),
+      start_time: event.start_time,
+      end_time: event.end_time,
+      start_time_formatted: this.formatTime(event.start_time),
+      end_time_formatted: this.formatTime(event.end_time),
+    }
+  }
+
   public static async validatePassword(password: string) {
     const regex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,20}$/;
 
@@ -120,6 +138,30 @@ export default class Generic {
 
   public static async handleAllowedUser(userType: any) {
     if(userType.includes(UserType.SuperAdmin)) {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  public static async handleAllowedBlogUser(userType: any) {
+    if(userType.includes(UserType.SuperAdmin) || userType.includes(UserType.Blog)) {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  public static async handleAllowedAppUser(userType: any) {
+    if(userType.includes(UserType.SuperAdmin) || userType.includes(UserType.Application)) {
+      return true
+    } else {
+      return false
+    }
+  }
+
+  public static async handleAllowedAppointmentUser(userType: any) {
+    if(userType.includes(UserType.SuperAdmin) || userType.includes(UserType.Appointment)) {
       return true
     } else {
       return false

@@ -57,10 +57,38 @@ import {
     updateSubscriberHandler,
     updateTestimonialHandler,
     toggleTestimonialStatusHandler,
-    fetchTestimonialsClientHandler
+    fetchTestimonialsClientHandler,
+    bookingHandler,
+    calendlyEventHandler,
+    cancelEventHandler,
+    noShowHandler
 } from '../../routes/adminRoute';
 
 const adminEndpoints: RouteEndpoint  = [
+    {
+        name: 'calendly event',
+        method: 'get',
+        path: '/calendly-event/:eventId',
+        handler: calendlyEventHandler
+    },
+    {
+        name: 'cancel event',
+        method: 'post',
+        path: '/cancel-event/:eventId',
+        handler: cancelEventHandler
+    },
+    {
+        name: 'mark as no show',
+        method: 'post',
+        path: '/no-show',
+        handler: noShowHandler
+    },
+    {
+        name: 'appointment booking',
+        method: 'post',
+        path: '/appointment-booking',
+        handler: bookingHandler
+    },
     {
         name: 'create service',
         method: 'post',

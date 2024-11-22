@@ -6,6 +6,32 @@ import PasswordEncoder from "../utils/PasswordEncoder";
 const passwordEncoder = new PasswordEncoder();
 const adminController = new AdminController(passwordEncoder);
 
+export const calendlyWebhookHandler = async (req: Request, res: Response) =>  {
+    await adminController.calendlyWebhook(req);
+
+    // res.status(response.code).json(response);
+};
+
+export const calendlyEventHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.calendlyEvent(req);
+    res.status(response.code).json(response);
+});
+
+export const cancelEventHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.cancelEvent(req);
+    res.status(response.code).json(response);
+});
+
+export const noShowHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.noShow(req);
+    res.status(response.code).json(response);
+});
+
+export const bookingHandler = authenticateRouteWrapper(async (req, res) =>  {
+    const response = await adminController.booking(req);
+    res.status(response.code).json(response);
+});
+
 export const createChatHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await adminController.createChat(req);
     res.status(response.code).json(response);

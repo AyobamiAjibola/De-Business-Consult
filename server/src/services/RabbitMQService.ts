@@ -9,6 +9,7 @@ import Joi from 'joi';
 import datasources from './dao';
 import { IChatMessageModel } from '../models/ChatMessages';
 import { STATUSES } from '../config/constants';
+import { processCalendlyEvent } from './CalendlyEventWorker';
 
 const sendMailService = new SendMailService();
 
@@ -20,6 +21,7 @@ class RabbitMQService {
     private readonly deadLetterQueue: string;
     private readonly chatQueue: string;
     private readonly chatSeen: string;
+    private readonly calendly: string;
     private data: any | null = null;
     private readonly LOG: Logger = LOG;
     private retryLimit = 3;
@@ -29,13 +31,15 @@ class RabbitMQService {
         emailQueue: string, 
         deadLetterQueue: string,
         chatQueue: string,
-        chatSeen: string
+        chatSeen: string,
+        calendly: string
     ) {
         this.paymentQueue = paymentQueue;
         this.emailQueue = emailQueue;
         this.deadLetterQueue = deadLetterQueue;
         this.chatQueue = chatQueue;
         this.chatSeen = chatSeen;
+        this.calendly = calendly;
     }
 
     // Check if channel is initialized
@@ -57,7 +61,8 @@ class RabbitMQService {
                 this.channel.assertQueue(this.emailQueue, { durable: true }),
                 this.channel.assertQueue(this.deadLetterQueue, { durable: true }),
                 this.channel.assertQueue(this.chatQueue, { durable: true }),
-                this.channel.assertQueue(this.chatSeen, { durable: true })
+                this.channel.assertQueue(this.chatSeen, { durable: true }),
+                this.channel.assertQueue(this.calendly, { durable: true })
             ]);
 
             // Prefetching to limit unacknowledged messages
@@ -69,12 +74,14 @@ class RabbitMQService {
                             ${this.deadLetterQueue},
                             ${this.chatQueue}, 
                             ${this.chatSeen}, 
+                            ${this.calendly}
                         `);
 
             await this.startWorker();
             await this.consumeEmails();
             await this.storeChatMessageConsumer();
             await this.chatSeenConsumer();
+            await this.startCalendlyWorker();
         } catch (error) {
             this.LOG.error('Error connecting to RabbitMQ:', error);
             this.reconnect(); // Automatic reconnection in case of error
@@ -128,6 +135,24 @@ class RabbitMQService {
 
             try {
                 await processEvent(event);
+                this.channel?.ack(msg); // Acknowledge after successful processing
+            } catch (error) {
+                this.LOG.error('Error processing event:', error);
+                this.channel?.nack(msg); // Reject on failure
+            }
+        });
+    }
+
+    private async startCalendlyWorker(): Promise<void> {
+        this.ensureChannelInitialized();
+
+        this.channel?.consume(this.calendly, async (msg) => {
+            if (!msg) return;
+
+            const event: Stripe.Event = JSON.parse(msg.content.toString());
+
+            try {
+                await processCalendlyEvent(event);
                 this.channel?.ack(msg); // Acknowledge after successful processing
             } catch (error) {
                 this.LOG.error('Error processing event:', error);

@@ -424,10 +424,10 @@ export default class ApplicationController {
         ]);
 
         if(!user)
-            return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
+            return Promise.reject(CustomAPIError.response("User not found.", HttpStatus.NOT_FOUND.code));
 
-        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
-        if(user && !isAllowed)
+        const isAllowed = await Generic.handleAllowedUser(user.userType)
+        if(!isAllowed)
             return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
         const response: HttpResponse<any> = {
@@ -457,8 +457,8 @@ export default class ApplicationController {
         if(!user)
             return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
-        const isAllowed = await Generic.handleAllowedUser(user && user.userType)
-        if(user && !isAllowed)
+        const isAllowed = await Generic.handleAllowedAppUser(user.userType)
+        if(!isAllowed)
             return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
         if(!application)
@@ -498,41 +498,6 @@ export default class ApplicationController {
       
         return Promise.resolve(response);
     }
-
-    // public async downloadApplicationDocs (req: Request, res: Response) {
-
-    //     const filename = '02b0afab-f469-44b7-b5ef-cc6cef9da010.png';
-    //     //console.log(req.body, 'files')
-    //     const application = {
-    //         successful: [
-    //         path.join(__dirname, '../../uploads/photo', filename), // Add your file paths here
-    //         // Add more files if needed
-    //         ],
-    //     };
-
-    //     const archive = archiver('zip', { zlib: { level: 9 } });
-    //     const zipFilename = `application_${filename}_docs.zip`;
-
-    //     // Set headers for the response
-    //     res.setHeader('Content-Disposition', `attachment; filename=${zipFilename}`);
-    //     res.setHeader('Content-Type', 'application/zip');
-
-    //     // Pipe the archive to the response stream
-    //     archive.pipe(res);
-
-    //     for (const filePath of application.successful) {
-    //         if (fs.existsSync(filePath)) {
-    //             const fileNameInZip = path.basename(filePath); // Get the base file name
-    //             console.log('Adding file to zip:', filePath);
-    //             archive.file(filePath, { name: fileNameInZip });
-    //         } else {
-    //             console.error('File not found:', filePath);
-    //             res.status(404).send('File not found'); // Return 404 if the file does not exist
-    //             return; // Stop further processing
-    //         }
-    //     }
-
-    // }
 
     @TryCatch
     public async createApplication (req: Request) {
@@ -731,9 +696,9 @@ export default class ApplicationController {
                 datasources.applicationDAOService.findById(applicationId)
             ]);
 
-            const isAllowed = Generic.handleAllowedUser
+            const isAllowed = Generic.handleAllowedAppUser(user && user.userType)
 
-            if(user && !isAllowed)
+            if(!isAllowed)
                 return Promise.reject(CustomAPIError.response("Unauthorized.", HttpStatus.UNAUTHORIZED.code));
 
             if(!application)
@@ -775,7 +740,6 @@ export default class ApplicationController {
             const chatId = req.params.chatId;
     
             const { error, value } = Joi.object<any>({
-            //   applicationFile: Joi.string().label("Files"),
                 applicationFiles: Joi.array().items(Joi.any()).label("Files")
             }).validate(fields);
     

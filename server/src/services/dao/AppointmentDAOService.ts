@@ -1,4 +1,4 @@
-import { FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
+import { FilterQuery, UpdateQuery, QueryOptions, UpdateWriteOpResult } from 'mongoose';
 import {IAppointmentModel} from '../../models/Appointment';
 
 import { appModelTypes } from '../../@types/app-model';
@@ -43,6 +43,14 @@ export default class AppointmentDAOService implements ICrudDAO<IAppointmentModel
     options?: QueryOptions
   ): Promise<IAppointmentModel | null> {
     return this.appointmentRepository.updateByAny(filter, update, options)
+  }
+
+  updateMany(
+    filter: FilterQuery<IAppointmentModel>, 
+    update: UpdateQuery<IAppointmentModel>, 
+    options?: QueryOptions): Promise<UpdateWriteOpResult> 
+  {
+    return this.appointmentRepository.updateMany(filter, update, options)
   }
 
   deleteByAny(filter: FilterQuery<IAppointmentModel>, options?: QueryOptions): Promise<void> {

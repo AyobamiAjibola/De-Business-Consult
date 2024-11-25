@@ -5,6 +5,7 @@ import {
     createAppointmentConfigHandler, 
     createAppointmentHandler, 
     deleteAppointmentConfigHandler, 
+    deleteAppointmentHandler, 
     fetchAllAppointmentsHandler, 
     fetchClientAppointmentsHandler, 
     getAppointmentConfigHandler, 
@@ -53,7 +54,7 @@ const appointmentEndpoints: RouteEndpoint  = [
         name: 'delete appointment',
         method: 'delete',
         path: '/delete-appointment/:appointmentId',
-        handler: deleteAppointmentConfigHandler
+        handler: deleteAppointmentHandler
     },
     {
         name: 'fetch all appointments',

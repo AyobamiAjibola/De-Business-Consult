@@ -27,10 +27,10 @@ export const noShowHandler = authenticateRouteWrapper(async (req, res) =>  {
     res.status(response.code).json(response);
 });
 
-export const bookingHandler = authenticateRouteWrapper(async (req, res) =>  {
+export const bookingHandler = async (req: Request, res: Response) =>  {
     const response = await adminController.booking(req);
     res.status(response.code).json(response);
-});
+};
 
 export const createChatHandler = authenticateRouteWrapper(async (req, res) =>  {
     const response = await adminController.createChat(req);

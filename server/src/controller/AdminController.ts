@@ -50,7 +50,7 @@ export default class AdminController {
 
     @TryCatch
     public async booking(req: Request) {
-        const userId = req.user._id;
+        // const userId = req.user._id;
 
         const { error, value } = Joi.object<any>({
             appointmentId: Joi.string().required().label('Appointment Id')
@@ -58,7 +58,7 @@ export default class AdminController {
         if(error) return Promise.reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
 
         const payload = JSON.stringify({ 
-            user: userId,
+            // user: userId,
             appointmentId: value.appointmentId 
         });
 

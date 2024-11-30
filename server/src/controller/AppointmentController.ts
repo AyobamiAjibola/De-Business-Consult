@@ -89,9 +89,9 @@ export default class AppointmentController {
             service: Joi.string().required().label("Service"),
             additionalInfo: Joi.string().optional().allow('').label('Appointment date'),
             clientId: Joi.string().optional().allow("").label('Client id'),
-            email: Joi.string().optional().allow("").label("Client email"),
-            firstName: Joi.string().optional().allow("").label("First name"),
-            lastName: Joi.string().optional().allow("").label("Last name"),
+            // email: Joi.string().optional().allow("").label("Client email"),
+            // firstName: Joi.string().optional().allow("").label("First name"),
+            // lastName: Joi.string().optional().allow("").label("Last name"),
             companyName: Joi.string().optional().allow("").label("Company name"),
             phone: Joi.string().optional().allow("").label("Phone number")
         }).validate(req.body);
@@ -171,9 +171,9 @@ export default class AppointmentController {
             appointmentId: `#${id}`,
             additionalInfo: value.additionalInfo,
             client: client ? client._id : null,
-            email: value.email ? value.email : client?.email,
-            firstName: value.firstName ? value.firstName : null,
-            lastName: value.lastName ? value.lastName : null,
+            // email: value.email ? value.email : client?.email,
+            // firstName: value.firstName ? value.firstName : null,
+            // lastName: value.lastName ? value.lastName : null,
             companyName: value.companyName ? value.companyName : null,
             phone: value.phone ? value.phone : null,
             calendly_event: 'waiting'

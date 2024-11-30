@@ -68,7 +68,10 @@ export async function processCalendlyEvent(event: any) {
                             invitee: JSON.stringify(invitee),
                             questions_and_answers: JSON.stringify(createdPayload.questions_and_answers),
                             mark_no_show_uri: createdPayload.uri
-                        }
+                        },
+                        email: createdPayload.email,
+                        firstName: createdPayload.first_name,
+                        lastName: createdPayload.last_name
                     }
                 )
 

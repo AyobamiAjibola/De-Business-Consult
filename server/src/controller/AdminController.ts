@@ -347,7 +347,7 @@ export default class AdminController {
         const [user, applications, appointments, clientsCount, applicationCount, appointmentCount, transaction] = await Promise.all([
             datasources.userDAOService.findById(userId),
             datasources.applicationDAOService.findAll({ 
-                status: ApplicationStatus.InReview
+                status: ApplicationStatus.Submitted
             }, searchOptions),
             datasources.appointmentDAOService.findAll({
                 status: { $in: [AppointmentStatus.Upcoming] }

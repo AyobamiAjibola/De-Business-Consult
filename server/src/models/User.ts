@@ -4,7 +4,13 @@ export enum UserType {
     Blog = 'blog',
     Application = 'application',
     Appointment = 'appointment',
-    SuperAdmin = 'super-admin'
+    SuperAdmin = 'super-admin',
+    Newsletter = 'newsletter',
+    UsersAndClient = 'users_and_clients',
+    Testimonial = 'testimonial',
+    Payments = 'payments',
+    Services = 'services',
+    Dashboard = 'dashboard',
 }
 
 export enum UserStatus {

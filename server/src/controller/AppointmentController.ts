@@ -34,7 +34,7 @@ export default class AppointmentController {
 
         const service = await datasources.appointmentConfigDAOService.findByAny({ service: value.service });
         if(service)
-            return Promise.reject(CustomAPIError.response("You have a service config with the selected number.", HttpStatus.BAD_REQUEST.code));
+            return Promise.reject(CustomAPIError.response("You have a config with the selected service.", HttpStatus.BAD_REQUEST.code));
 
         await datasources.appointmentConfigDAOService.create({ 
             name: value.name,
@@ -45,6 +45,49 @@ export default class AppointmentController {
         const response: HttpResponse<any> = {
             code: HttpStatus.CREATED.code,
             message: 'Successful.'
+        };
+      
+        return Promise.resolve(response);
+
+    }
+
+    @TryCatch
+    public async updateAppointmentConfig (req: Request) {
+        const serviceConfigId = req.params.serviceConfigId;
+
+        const { error, value } = Joi.object<any>({
+            name: Joi.string().label("Name"),
+            amount: Joi.string().label("Amount"),
+            service: Joi.string().label("Service id")
+        }).validate(req.body);
+        if (error)
+            return Promise.reject(
+              CustomAPIError.response(
+                error.details[0].message,
+                HttpStatus.BAD_REQUEST.code
+              )
+            );
+
+        const service = await datasources.appointmentConfigDAOService.findById(serviceConfigId);
+        if(!service)
+            return Promise.reject(CustomAPIError.response("Service config does not exist", HttpStatus.NOT_FOUND.code));
+
+        if (value.service && value.service !== service.service) {
+            const existingService = await datasources.appointmentConfigDAOService.findByAny({ service: value.service });
+            if (existingService) {
+                return Promise.reject(CustomAPIError.response("You have a config with the selected service.", HttpStatus.FORBIDDEN.code));
+            }
+        }
+
+        await datasources.appointmentConfigDAOService.update({_id: service._id},{ 
+            name: value.name ? value.name : service.name,
+            amount: value.amount ? value.amount : service.amount,
+            service: value.service ? value.service : service.service
+        });
+
+        const response: HttpResponse<any> = {
+            code: HttpStatus.CREATED.code,
+            message: 'Successfully updated.'
         };
       
         return Promise.resolve(response);

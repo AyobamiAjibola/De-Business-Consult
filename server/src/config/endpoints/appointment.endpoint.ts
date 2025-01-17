@@ -10,6 +10,7 @@ import {
     fetchClientAppointmentsHandler, 
     getAppointmentConfigHandler, 
     getSingleAppointmentHandler, 
+    updateAppointmentConfigHandler, 
     updateAppointmentHandler 
 } from '../../routes/appointmentRoute';
 
@@ -19,6 +20,12 @@ const appointmentEndpoints: RouteEndpoint  = [
         method: 'post',
         path: '/create-appointment-config',
         handler: createAppointmentConfigHandler
+    },
+    {
+        name: 'update appointment config',
+        method: 'put',
+        path: '/update-appointment-config/:serviceConfigId',
+        handler: updateAppointmentConfigHandler
     },
     {
         name: 'delete appointment config',

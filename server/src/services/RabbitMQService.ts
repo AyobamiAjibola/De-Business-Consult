@@ -10,14 +10,17 @@ import datasources from './dao';
 import { IChatMessageModel } from '../models/ChatMessages';
 import { STATUSES } from '../config/constants';
 import { processCalendlyEvent } from './CalendlyEventWorker';
+import TwilioService from './TwillioService';
 
 const sendMailService = new SendMailService();
+const twilioService = new TwilioService()
 
 class RabbitMQService {
     private connection: Connection | null = null;
     private channel: Channel | null = null;
     private readonly paymentQueue: string;
     private readonly emailQueue: string;
+    private readonly textQueue: string;
     private readonly deadLetterQueue: string;
     private readonly chatQueue: string;
     private readonly chatSeen: string;
@@ -29,6 +32,7 @@ class RabbitMQService {
     constructor(
         paymentQueue: string, 
         emailQueue: string, 
+        textQueue: string, 
         deadLetterQueue: string,
         chatQueue: string,
         chatSeen: string,
@@ -36,6 +40,7 @@ class RabbitMQService {
     ) {
         this.paymentQueue = paymentQueue;
         this.emailQueue = emailQueue;
+        this.textQueue = textQueue;
         this.deadLetterQueue = deadLetterQueue;
         this.chatQueue = chatQueue;
         this.chatSeen = chatSeen;
@@ -59,6 +64,7 @@ class RabbitMQService {
             await Promise.all([
                 this.channel.assertQueue(this.paymentQueue, { durable: true }),
                 this.channel.assertQueue(this.emailQueue, { durable: true }),
+                this.channel.assertQueue(this.textQueue, { durable: true }),
                 this.channel.assertQueue(this.deadLetterQueue, { durable: true }),
                 this.channel.assertQueue(this.chatQueue, { durable: true }),
                 this.channel.assertQueue(this.chatSeen, { durable: true }),
@@ -71,6 +77,7 @@ class RabbitMQService {
             this.LOG.info(`Connected to queues: 
                             ${this.paymentQueue}, 
                             ${this.emailQueue}, 
+                            ${this.textQueue}, 
                             ${this.deadLetterQueue},
                             ${this.chatQueue}, 
                             ${this.chatSeen}, 
@@ -82,6 +89,7 @@ class RabbitMQService {
             await this.storeChatMessageConsumer();
             await this.chatSeenConsumer();
             await this.startCalendlyWorker();
+            await this.consumeText();
         } catch (error) {
             this.LOG.error('Error connecting to RabbitMQ:', error);
             this.reconnect(); // Automatic reconnection in case of error
@@ -173,9 +181,26 @@ class RabbitMQService {
         }
     }
 
+    public async sendSMS({ data }: { data: any }): Promise<void> {
+        this.data = data;
+        await this.produceTextMessage();
+    }
+
     public async sendEmail({ data }: { data: any }): Promise<void> {
         this.data = data;
         await this.produce();
+    }
+
+    private async produceTextMessage(): Promise<void> {
+        this.ensureChannelInitialized();
+
+        try {
+            const messageBuffer = Buffer.from(JSON.stringify(this.data));
+            await this.channel?.sendToQueue(this.textQueue, messageBuffer, { persistent: true });
+            this.LOG.info(`Message added to queue: ${this.textQueue}`);
+        } catch (error) {
+            this.LOG.error('Failed to produce message:', error);
+        }
     }
 
     private async produce(): Promise<void> {
@@ -192,7 +217,7 @@ class RabbitMQService {
 
     private validateEmailMessage(data: any): void {
         const schema = Joi.object({
-            to: Joi.string().email().required(),
+            to: Joi.string().required(),
             replyTo: Joi.string().email().required(),
             from: Joi.string().required(),
             subject: Joi.string().required(),
@@ -204,6 +229,54 @@ class RabbitMQService {
             throw new Error(`Invalid email message structure: ${error.message}`);
         }
     }
+
+    private validateTextMessage(data: any): void {
+        const schema = Joi.object({
+            to: Joi.string().required(),
+            message: Joi.string().required()
+        });
+
+        const { error } = schema.validate(data);
+        if (error) {
+            throw new Error(`Invalid text message structure: ${error.message}`);
+        }
+    }
+
+    private async consumeText(): Promise<void> {
+        this.ensureChannelInitialized();
+
+        try {
+            await this.channel?.consume(
+                this.textQueue,
+                async (msg: Message | null) => {
+                    if (!msg) return;
+
+                    const data = JSON.parse(msg.content.toString());
+                    const retryCount = (msg.properties.headers ? msg.properties.headers['x-retry-count'] : 0) || 0 + 1;
+
+                    try {
+                        // this.validateTextMessage(data);
+                        await twilioService.sendSMS(data);
+                        this.LOG.info(`Text sent successfully to ${data.to}`);
+                        this.channel?.ack(msg); // Acknowledge success
+                    } catch (error) {
+                        this.LOG.error(`Failed to send text, retry count: ${retryCount}`, error);
+
+                        if (retryCount >= this.retryLimit) {
+                            this.LOG.error('Exceeded retry limit, moving message to dead-letter queue');
+                            await this.moveToDeadLetterQueue(msg); // Move to DLQ
+                        } else {
+                            this.LOG.info('Requeueing message for retry');
+                            this.channel?.nack(msg, false, true); // Requeue for retry
+                        }
+                    }
+                },
+                { noAck: false } // Enable manual acknowledgment
+            );
+        } catch (error) {
+            this.LOG.error('Failed to consume messages:', error);
+        }
+    } 
 
     private async consumeEmails(): Promise<void> {
         this.ensureChannelInitialized();

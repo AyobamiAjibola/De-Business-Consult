@@ -93,9 +93,25 @@ export default class AuthenticationController {
 
         await datasources.userDAOService.create(payload as IUserModel);
 
+        //SEND EMAIL USER
+        const mail = signup_template({
+            message: `Here is your password below. Please update it after signing in for security purposes.`,
+            password: process.env.ADMIN_PASS
+        });
+
+        const emailPayload = {
+            to: value.email,
+            replyTo: process.env.SMTP_EMAIL_FROM,
+            from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+            subject: `De Business Consult.`,
+            html: mail
+        }
+
+        await rabbitMqService.sendEmail({data: emailPayload})
+
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
-            message: `Successful.`
+            message: `Successfully created a user.`
         };
 
         return Promise.resolve(response);

@@ -67,6 +67,10 @@ import StatusTypes = appCommonTypes.StatusTypes;
     name: 'DE-CALENDLY'
   };
 
+  export const QUEUE_EVENTS_TEXT : QueueEvents = {
+    name: 'DE-TEXT'
+  };
+
   export const STATUSES: StatusTypes = {
     sent: 'sent',
     delivered: 'delivered',

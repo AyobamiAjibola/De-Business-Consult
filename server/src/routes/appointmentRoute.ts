@@ -14,6 +14,11 @@ export const createAppointmentConfigHandler = async (req: Request, res: Response
     res.status(response.code).json(response);
 };
 
+export const updateAppointmentConfigHandler = async (req: Request, res: Response) =>  {
+    const response = await appointmentController.updateAppointmentConfig(req);
+    res.status(response.code).json(response);
+};
+
 export const deleteAppointmentConfigHandler = async (req: Request, res: Response) =>  {
     const response = await appointmentController.deleteAppointmentConfig(req);
     res.status(response.code).json(response);

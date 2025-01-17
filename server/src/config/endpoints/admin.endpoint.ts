@@ -355,7 +355,7 @@ const adminEndpoints: RouteEndpoint  = [
     },
     {
         name: 'toggle-testimonial-status',
-        method: 'post',
+        method: 'put',
         path: '/toggle-testimonial-status/:testimonialId',
         handler: toggleTestimonialStatusHandler
     },

@@ -34,6 +34,7 @@ app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(morgan("dev"));
 app.use("/uploads", _static(path.resolve("uploads")));
+app.use("/public", _static(path.resolve("public")));
 
 //STRIPE WEBHOOK
 app.post('/api/v1/webhook', express.raw({ type: 'application/json' }), webhookHandler);

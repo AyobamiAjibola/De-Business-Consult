@@ -1032,6 +1032,8 @@ export default class AdminController {
         if(!newsLetter)
             return Promise.reject(CustomAPIError.response("News letter not found", HttpStatus.NOT_FOUND.code));
 
+        const subscribers = await datasources.subscriberDAOService.findAll({ status: SubscriberStatus.Active })
+
         if(value.status === NewsLetterStatus.Scheduled && !value.scheduledDate) 
             return Promise.reject(CustomAPIError.response(`Scheduled date is required.`, HttpStatus.NOT_FOUND.code));
 
@@ -1058,6 +1060,23 @@ export default class AdminController {
                         : null
             }
         });
+
+        const subscribedUsers = subscribers?.map((data: any) => data.email);
+
+        const mail = mail_template({
+            content: newsLetter.content
+        });
+
+        if(value.status === NewsLetterStatus.Sent && subscribedUsers.length > 0) {
+            const emailPayload = {
+                to: subscribedUsers.join(', '),
+                replyTo: process.env.SMTP_EMAIL_FROM,
+                from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
+                subject: `De Business Consult News Letter.`,
+                html: mail
+            };
+            await rabbitMqService.sendEmail({data: emailPayload});
+        }
 
         const response: HttpResponse<any> = {
             code: HttpStatus.OK.code,
@@ -1614,7 +1633,7 @@ export default class AdminController {
 
                 if(value.status === NewsLetterStatus.Sent && subscribedUsers.length > 0) {
                     const emailPayload = {
-                        to: subscribedUsers,
+                        to: subscribedUsers.join(', '),
                         replyTo: process.env.SMTP_EMAIL_FROM,
                         from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
                         subject: `De Business Consult News Letter.`,
@@ -1639,7 +1658,6 @@ export default class AdminController {
                 const { error, value } = Joi.object<any>({
                     content: Joi.string().optional().allow('').label('Content'),
                     docs: Joi.array().items(Joi.string()).label("Documents"),
-                    status: Joi.string().optional().allow('').label('Status'),
                     scheduledDate: Joi.date().optional().allow(null).label('Schedule Date')
                 }).validate(fields);
                 if(error) return reject(CustomAPIError.response(error.details[0].message, HttpStatus.BAD_REQUEST.code));
@@ -1665,9 +1683,8 @@ export default class AdminController {
                     );
                 }
 
-                const [user, subscribers, newsLetter] = await Promise.all([
+                const [user, newsLetter] = await Promise.all([
                     datasources.userDAOService.findById(loggedInUser),
-                    datasources.subscriberDAOService.findAll({ status: SubscriberStatus.Active }),
                     datasources.newsLetterDAOService.findById(newsLetterId)
                 ]);
 
@@ -1699,8 +1716,6 @@ export default class AdminController {
                     newsLetterFiles.push(result);
                 };
 
-                const subscribedUsers = subscribers.map((data) => data.email);
-
                 const payload = {
                     content: value.content ? value.content : newsLetter.content,
                     files: newsLetterFiles.length > 0 ? newsLetterFiles : newsLetter.files,
@@ -1710,22 +1725,7 @@ export default class AdminController {
                     }
                 }
 
-                const updatedNewsLetter = await datasources.newsLetterDAOService.updateByAny({ _id: newsLetter._id }, payload);
-
-                const mail = mail_template({
-                    content: updatedNewsLetter?.content
-                });
-
-                if(value.status === NewsLetterStatus.Sent && subscribedUsers.length > 0) {
-                    const emailPayload = {
-                        to: subscribedUsers,
-                        replyTo: process.env.SMTP_EMAIL_FROM,
-                        from: `${process.env.APP_NAME} <${process.env.SMTP_EMAIL_FROM}>`,
-                        subject: `De Business Consult News Letter.`,
-                        html: mail
-                    };
-                    await rabbitMqService.sendEmail({data: emailPayload});
-                }
+                await datasources.newsLetterDAOService.updateByAny({ _id: newsLetter._id }, payload);
 
                 return resolve('news letter' as any)
 

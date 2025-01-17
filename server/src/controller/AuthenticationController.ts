@@ -96,7 +96,7 @@ export default class AuthenticationController {
         //SEND EMAIL USER
         const mail = signup_template({
             message: `Here is your password below. Please update it after signing in for security purposes.`,
-            password: process.env.ADMIN_PASS
+            link: process.env.ADMIN_PASS
         });
 
         const emailPayload = {

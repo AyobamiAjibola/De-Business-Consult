@@ -1,0 +1,60 @@
+name: Continuous Integration and Delivery
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v3
+
+      - name: Connect with vps
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # Create the application directory and navigate to it
+            mkdir -p /var/www/staging/de-business-consult && cd /var/www/staging/de-business-consult
+
+            # Check if the directory is a git repository
+            if [ -d ".git" ]; then
+              git stash
+              git pull origin main
+            else
+              git clone -b main ${{ secrets.REPO_GITHUB_URL }} .
+            fi
+
+            # Install dependencies and build the application
+            yarn --force
+            yarn build
+            
+            # Get the PM2 id for the application and make jq is installed on the vps
+            id=$(pm2 id "de-server" 2>/dev/null | jq '.[0]' | tr -d '"')
+            if [ -n "$id" ]; then
+              echo "Reloading application"
+              pm2 reload $id
+              pm2 save
+            else
+              echo "New application"
+              cd server
+              pm2 start ./build/server.js --name de-server
+              pm2 startup
+              pm2 save
+            fi
+
+
+     
+
+      

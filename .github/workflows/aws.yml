@@ -20,7 +20,7 @@ jobs:
       - name: Connect with vps
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.HOST }}
+          host: 77.37.87.129
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}

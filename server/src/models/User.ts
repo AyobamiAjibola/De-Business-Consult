@@ -11,6 +11,7 @@ export enum UserType {
     Payments = 'payments',
     Services = 'services',
     Dashboard = 'dashboard',
+    Admin = 'admin'
 }
 
 export enum UserStatus {

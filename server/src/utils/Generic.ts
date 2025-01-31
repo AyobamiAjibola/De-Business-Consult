@@ -3,7 +3,7 @@ import fs from "fs/promises";
 
 import { v4 } from "uuid";
 import moment from "moment";
-import { sign, verify } from "jsonwebtoken";
+import { sign, verify, Secret } from "jsonwebtoken";
 
 import settings from "../config/settings";
 import { appCommonTypes } from "../@types/app-common";
@@ -324,7 +324,7 @@ export default class Generic {
   }
 
   public static generateAccessToken(payload: CustomJwtPayload) {
-    const key = <string>settings.jwtAccessToken.key;
+    const key: Secret = <string>settings.jwtAccessToken.key;
     const expiration = <string>settings.jwtAccessToken.expiry;
     return sign(payload, key, { expiresIn: expiration });
   }
@@ -341,7 +341,7 @@ export default class Generic {
   }
 
   public static generateRereshToken(payload: CustomJwtPayload) {
-    const key = <string>settings.jwtRefreshToken.key;
+    const key: Secret = <string>settings.jwtRefreshToken.key;
     const expiration = <string>settings.jwtRefreshToken.expiry;
     return sign(payload, key, { expiresIn: expiration });
   }
@@ -471,8 +471,8 @@ export default class Generic {
 
   public static async generateJWT(payload: CustomJwtPayload, refresh_token: string = '') {
     try {
-
-      const accessToken = sign(payload, <string>settings.jwtAccessToken.key, {
+      const key: Secret = <string>settings.jwtAccessToken.key;
+      const accessToken = sign(payload, key, {
         expiresIn: <string>settings.jwtAccessToken.expiry,
       });
 
@@ -485,7 +485,8 @@ export default class Generic {
           );
         }
       } else {
-        refresh_token = sign(payload, <string>settings.jwtRefreshToken.key, {
+        const key: Secret = <string>settings.jwtRefreshToken.key;
+        refresh_token = sign(payload, key, {
           expiresIn: <string>settings.jwtRefreshToken.expiry,
         });
   

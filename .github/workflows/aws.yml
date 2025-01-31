@@ -17,6 +17,13 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v3
 
+      - name: Debug Private Key Length
+        run: |
+          echo "Private key length: $(echo -n "${{ secrets.PRIVATE_KEY }}" | wc -c) characters"
+          echo "Host: ${{ secrets.HOST }}"
+          echo "Username: ${{ secrets.USERNAME }}"
+          echo "Port: ${{ secrets.SSH_PORT }}"
+
       - name: Connect with vps
         uses: appleboy/ssh-action@master
         with:

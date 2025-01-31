@@ -22,7 +22,7 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.PRIVATE_KEY }}
+          password: Debusinessconsulting@2024?
           port: ${{ secrets.SSH_PORT }}
           script: |
             # Debug the SSH connection with verbose output

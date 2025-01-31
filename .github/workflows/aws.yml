@@ -22,14 +22,12 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.PRIVATE_KEY }}
+          password: ${{ secrets.VPS_PASSWORD }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            # Debug the SSH connection with verbose output
-            ssh -vvv -i "${{ secrets.PRIVATE_KEY }}" -p ${{ secrets.SSH_PORT }} ${{ secrets.USERNAME }}@${{ secrets.HOST }}
 
             # Create the application directory and navigate to it
-            mkdir -p /var/www/staging/de-business-consult && cd /var/www/staging/de-business-consult
+            mkdir -p /var/www/staging/De-Business-Consult && cd /var/www/staging/De-Business-Consult
 
             # Check if the directory is a git repository
             if [ -d ".git" ]; then
@@ -40,18 +38,19 @@ jobs:
             fi
 
             # Install dependencies and build the application
+            cd server
             yarn --force
             yarn build
             
             # Get the PM2 id for the application and make jq is installed on the vps
             id=$(pm2 id "de-server" 2>/dev/null | jq '.[0]' | tr -d '"')
+            echo "Pm2 id $id"
             if [ -n "$id" ]; then
               echo "Reloading application"
               pm2 reload $id
               pm2 save
             else
               echo "New application"
-              cd server
               pm2 start ./build/server.js --name de-server
               pm2 startup
               pm2 save

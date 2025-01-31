@@ -17,13 +17,6 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v3
 
-      - name: Debug Private Key Length
-        run: |
-          echo "Private key length: $(echo -n "${{ secrets.PRIVATE_KEY }}" | wc -c) characters"
-          echo "Host: ${{ secrets.HOST }}"
-          echo "Username: ${{ secrets.USERNAME }}"
-          echo "Port: ${{ secrets.SSH_PORT }}"
-
       - name: Connect with vps
         uses: appleboy/ssh-action@master
         with:
@@ -32,6 +25,9 @@ jobs:
           key: ${{ secrets.PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
+            # Debug the SSH connection with verbose output
+            ssh -vvv -i "${{ secrets.PRIVATE_KEY }}" -p ${{ secrets.SSH_PORT }} ${{ secrets.USERNAME }}@${{ secrets.HOST }}
+
             # Create the application directory and navigate to it
             mkdir -p /var/www/staging/de-business-consult && cd /var/www/staging/de-business-consult
 
